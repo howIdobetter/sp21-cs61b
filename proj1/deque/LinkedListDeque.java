@@ -17,7 +17,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         IntNode next;
         IntNode prev;
 
-        public IntNode(T item, IntNode next, IntNode prev) {
+        IntNode(T item, IntNode next, IntNode prev) {
             this.item = item;
             this.next = next;
             this.prev = prev;
@@ -87,7 +87,9 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
             start = start.next;
             while (start != sentinel.next) {
                 System.out.print(start.item);
-                if (start.next != sentinel) { System.out.print(" "); };
+                if (start.next != sentinel) {
+                    System.out.print(" ");
+                };
                 start = start.next;
             }
         }
@@ -180,7 +182,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
 
     private class LinkedListIterator implements Iterator<T> {
         private int wizPos;
-        public LinkedListIterator() {
+        LinkedListIterator() {
             wizPos = 0;
         }
 

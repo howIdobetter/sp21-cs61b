@@ -151,11 +151,6 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         return items[arrayIndex];
     }
 
-    @Override
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
     /**
      * Make objects in the deque iterable
      * @return iterator

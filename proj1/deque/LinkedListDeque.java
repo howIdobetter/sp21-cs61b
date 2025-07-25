@@ -76,12 +76,6 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         return this.size;
     }
 
-    /** Returns true if deque is empty, false otherwise. */
-    @Override
-    public boolean isEmpty() {
-        return this.size == 0;
-    }
-
     /** Prints the items in the deque from first to last,
      *  separated by a space. Once all the items have
      *  been printed, print out a new line.

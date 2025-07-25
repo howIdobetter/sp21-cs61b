@@ -89,7 +89,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
                 System.out.print(start.item);
                 if (start.next != sentinel) {
                     System.out.print(" ");
-                };
+                }
                 start = start.next;
             }
         }

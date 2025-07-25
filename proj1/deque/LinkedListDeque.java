@@ -1,7 +1,5 @@
 package deque;
 
-import org.junit.Test;
-
 import java.util.Iterator;
 
 /**
@@ -164,7 +162,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         return getRecursiveCombination(sentinel.next, index);
     }
 
-    public T getRecursiveCombination(IntNode start, int index) {
+    private T getRecursiveCombination(IntNode start, int index) {
         if (index == 0) {
             return start.item;
         }
@@ -180,7 +178,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         return new LinkedListIterator();
     }
 
-    public class LinkedListIterator implements Iterator<T> {
+    private class LinkedListIterator implements Iterator<T> {
         private int wizPos;
         public LinkedListIterator() {
             wizPos = 0;

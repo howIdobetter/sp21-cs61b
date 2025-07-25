@@ -145,7 +145,9 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
      **/
     @Override
     public T get(int index) {
-        if (index >= size || index < 0) return null;
+        if (index >= size || index < 0) {
+            return null;
+        }
         IntNode start = this.sentinel.next;
         while (index > 0) {
             start = start.next;
@@ -156,12 +158,16 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
 
     /** Same as get, but uses recursion. */
     public T getRecursive(int index) {
-        if (index >= size || index < 0) return null;
+        if (index >= size || index < 0) {
+            return null;
+        }
         return getRecursiveCombination(sentinel.next, index);
     }
 
     public T getRecursiveCombination(IntNode start, int index) {
-        if (index == 0) return start.item;
+        if (index == 0) {
+            return start.item;
+        }
         return getRecursiveCombination(start.next, index - 1);
     }
 
@@ -176,7 +182,9 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
 
     public class LinkedListIterator implements Iterator<T> {
         private int wizPos;
-        public LinkedListIterator() { wizPos = 0;}
+        public LinkedListIterator() {
+            wizPos = 0;
+        }
 
         @Override
         public boolean hasNext() {
@@ -200,12 +208,20 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
      **/
     @Override
     public boolean equals(Object other) {
-        if (this == other) return true;
-        if (other == null) return false;
-        if (other.getClass() != this.getClass()) return false;
+        if (this == other) {
+            return true;
+        }
+        if (other == null) {
+            return false;
+        }
+        if (other.getClass() != this.getClass()) {
+            return false;
+        }
         LinkedListDeque<T> o = (LinkedListDeque<T>) other;
-        if (o.size() != this.size()) return false;
-        for (int i = 0; i < size(); i ++) {
+        if (o.size() != this.size()) {
+            return false;
+        }
+        for (int i = 0; i < size(); i++) {
             if (!this.get(i).equals(o.get(i))) {
                 return false;
             }

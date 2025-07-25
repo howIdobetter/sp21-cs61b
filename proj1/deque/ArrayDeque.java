@@ -51,7 +51,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
             resize(2 * capacity);
         }
         items[nextFirst] = item;
-        size ++;
+        size++;
         nextFirst = nextFirst - 1 < 0 ? capacity : nextFirst - 1;
     }
     /**
@@ -63,8 +63,8 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
             resize(2 * capacity);
         }
         items[nextLast] = item;
-        size ++;
-        nextLast = nextLast + 1 < capacity ? nextLast + 1: 0;
+        size++;
+        nextLast = nextLast + 1 < capacity ? nextLast + 1 : 0;
     }
 
     /**
@@ -82,7 +82,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
     @Override
     public void printDeque() {
         resize(capacity);
-        for (int i = 0; i < size - 1; i ++) {
+        for (int i = 0; i < size - 1; i++) {
             System.out.print(items[i]);
             System.out.print(" ");
         }
@@ -162,7 +162,9 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
 
     private class DequeIterator implements Iterator<T> {
         private int wizPos;
-        public DequeIterator() { wizPos = 0;}
+        public DequeIterator() {
+            wizPos = 0;
+        }
 
         @Override
         public boolean hasNext() {
@@ -183,11 +185,19 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
 
     @Override
     public boolean equals(Object other) {
-        if (this == other) return true;
-        if (other == null) return false;
-        if (other.getClass() != this.getClass()) return false;
+        if (this == other) {
+            return true;
+        }
+        if (other == null) {
+            return false;
+        }
+        if (other.getClass() != this.getClass()) {
+            return false;
+        }
         ArrayDeque<T> o = (ArrayDeque<T>) other;
-        if (o.size() != this.size()) return false;
+        if (o.size() != this.size()) {
+            return false;
+        }
         for (int i = 0; i < size(); i ++) {
             if (!this.get(i).equals(o.get(i))) {
                 return false;

@@ -2,11 +2,8 @@ package deque;
 
 import static org.junit.Assert.*;
 
-import net.sf.saxon.ma.arrays.ArrayFunctionSet;
-import org.checkerframework.checker.units.qual.A;
 import org.junit.Test;
 
-import java.util.Iterator;
 
 public class ArrayDequeTest2 {
     @Test
@@ -108,8 +105,8 @@ public class ArrayDequeTest2 {
         ad1.addLast(0);
         ad1.addFirst(30);
 
-        assertEquals("Should have the same value", 30, (double)ad1.get(0), 0.0);
-        assertEquals("Should have the same value", 10, (double)ad1.get(1), 0.0);
+        assertEquals("Should have the same value", 30, (double) ad1.get(0), 0.0);
+        assertEquals("Should have the same value", 10, (double) ad1.get(1), 0.0);
         assertNull("The value should be null", ad1.get(-1));
         assertNull("The value should be null", ad1.get(5));
 
@@ -163,6 +160,6 @@ public class ArrayDequeTest2 {
         assertEquals("Two object's content should be the same", a, b);
 
         a.addLast("No");
-        assertNotEquals("Two object should not be the same",a, b);
+        assertNotEquals("Two object should not be the same", a, b);
     }
 }

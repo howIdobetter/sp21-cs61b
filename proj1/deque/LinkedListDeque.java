@@ -104,7 +104,7 @@ public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
         } else if (sentinel.next.next == sentinel.next) {
             size -= 1;
             T x = sentinel.next.item;
-            sentinel = null;
+            sentinel.next = null;
             return x;
         } else {
             size -= 1;

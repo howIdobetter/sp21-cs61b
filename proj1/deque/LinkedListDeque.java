@@ -1,13 +1,15 @@
 package deque;
 
+import org.junit.Test;
+
 import java.util.Iterator;
 
 /**
- * Implement a circular ArrayDeque from scratch.
+ * Implement a circular LinkedListDeque from scratch.
  *  @author Yuhao Wang
  */
 
-public class LinkedListDeque<T> implements Iterable<T> {
+public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
     /** A linked list deque need item, prev, next, size,
      * sentinel, and the last node's next is sentinel's
      * next.
@@ -36,6 +38,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
     /** Adds an item of type T to the front of the deque.
      * You can assume that item is never null.
      */
+    @Override
     public void addFirst(T item) {
         size += 1;
         if (sentinel.next == null) {
@@ -53,6 +56,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
     /** Adds an item of type T to the back of the deque.
      * You can assume that item is never null.
      */
+    @Override
     public void addLast(T item) {
         size += 1;
         if (sentinel.next == null) {
@@ -67,11 +71,13 @@ public class LinkedListDeque<T> implements Iterable<T> {
     }
 
     /** Returns the number of items in the deque. */
+    @Override
     public int size() {
         return this.size;
     }
 
     /** Returns true if deque is empty, false otherwise. */
+    @Override
     public boolean isEmpty() {
         return this.size == 0;
     }
@@ -80,6 +86,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      *  separated by a space. Once all the items have
      *  been printed, print out a new line.
      **/
+    @Override
     public void printDeque() {
         IntNode start = this.sentinel.next;
         if (start != null) {
@@ -98,6 +105,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
     /** Removes and returns the item at the front
      *  of the deque. If no such item exists, returns null.
      **/
+    @Override
     public T removeFirst() {
         if (sentinel.next == null) {
             return null;
@@ -119,6 +127,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
     /** Removes and returns the item at the back
      * of the deque. If no such item exists, returns null.
      **/
+    @Override
     public T removeLast() {
         if (sentinel.next == null) {
             return null;
@@ -140,6 +149,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      * 1 is the next item, and so forth. If no such item exists,
      * returns null. Must not alter the deque!
      **/
+    @Override
     public T get(int index) {
         if (index >= size || index < 0) return null;
         IntNode start = this.sentinel.next;
@@ -165,6 +175,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
      * (i.e. Iterable<T>) so we must provide this
      * method to return an iterator.
      **/
+    @Override
     public Iterator<T> iterator() {
         return new LinkedListIterator();
     }

@@ -32,7 +32,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         int last = nextLast - 1 < 0 ? capacity - 1 : nextLast - 1;
         if (first > last) {
             System.arraycopy(items, first, temp, 0, capacity - first);
-            System.arraycopy(items, capacity - first - 1, temp, 0, last + 1);
+            System.arraycopy(items, 0, temp, capacity - first, last + 1);
         } else {
             System.arraycopy(items, first, temp, 0, size);
         }

@@ -28,17 +28,17 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
      */
     private void resize(int cap) {
         T[] temp = (T[]) new Object[cap];
-        int first = nextFirst + 1 < capacity ? nextFirst + 1 : 0;
-        int last = nextLast - 1 < 0 ? capacity - 1 : nextLast - 1;
-        if (first > last) {
-            System.arraycopy(items, first, temp, 0, capacity - first);
-            System.arraycopy(items, 0, temp, capacity - first, last + 1);
-        } else {
+        int first = (nextFirst + 1) % capacity;
+        int last = (nextLast - 1 + capacity) % capacity;
+        if (first <= last) {
             System.arraycopy(items, first, temp, 0, size);
+        } else {
+            System.arraycopy(items, first, temp, 0, capacity - first);
+            System.arraycopy(items, 0, temp, capacity - first, nextLast);
         }
         nextFirst = cap - 1;
         nextLast = size;
-        this.capacity = cap;
+        capacity = cap;
         items = temp;
     }
 
@@ -52,7 +52,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         }
         items[nextFirst] = item;
         size++;
-        nextFirst = nextFirst - 1 < 0 ? capacity : nextFirst - 1;
+        nextFirst = (nextFirst - 1 + capacity) % capacity;
     }
     /**
      * Add an item to the back of the deque
@@ -64,7 +64,7 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
         }
         items[nextLast] = item;
         size++;
-        nextLast = nextLast + 1 < capacity ? nextLast + 1 : 0;
+        nextLast = (nextLast + 1) % capacity;
     }
 
     /**
@@ -81,12 +81,10 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
      */
     @Override
     public void printDeque() {
-        resize(capacity);
-        for (int i = 0; i < size - 1; i++) {
-            System.out.print(items[i]);
-            System.out.print(" ");
+        for (int i = 0; i < size; i++) {
+            System.out.print(get(i) + " ");
         }
-        System.out.println(items[size - 1]);
+        System.out.println();
     }
 
     /**
@@ -140,15 +138,11 @@ public class ArrayDeque<T> implements Iterable<T>, Deque<T> {
      */
     @Override
     public T get(int index) {
-        if (index < 0 || index >= items.length) {
+        if (index < 0 || index >= size) {
             return null;
         }
-        int first = nextFirst + 1 < capacity ? nextFirst + 1 : 0;
-        int arrayIndex = index + first;
-        if (arrayIndex >= items.length) {
-            arrayIndex -= items.length;
-        }
-        return items[arrayIndex];
+        int first = (nextFirst + 1) % capacity;
+        return items[(first + index) % capacity];
     }
 
     /**

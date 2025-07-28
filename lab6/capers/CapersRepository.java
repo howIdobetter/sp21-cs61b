@@ -32,6 +32,7 @@ public class CapersRepository {
      */
     public static void setupPersistence() {
         // TODO
+        CAPERS_FOLDER.mkdir();  // 创建 .capers 目录
         Dog.DOG_FOLDER.mkdir();
     }
 
@@ -42,7 +43,7 @@ public class CapersRepository {
      */
     public static void writeStory(String text) {
         // TODO
-        File f = Utils.join(CAPERS_FOLDER, "story.txt");
+        File f = Utils.join(CAPERS_FOLDER, "story");
         String ss = f.exists() ? readContentsAsString(f) : "";
         ss = ss + text + "\n";
         Utils.writeContents(f, ss);
@@ -72,5 +73,6 @@ public class CapersRepository {
         // TODO
         Dog d = Dog.fromFile(name);
         d.haveBirthday();
+        d.saveDog();
     }
 }

@@ -1,0 +1,6 @@
+Please enter desired length of each string: 10000
+Enter # strings to insert into the maps: 10000
+class bstmap.ULLMap: 1.84 sec
+class bstmap.BSTMap: 0.92 sec
+Java's Built-in TreeMap: 0.93 sec
+Java's Built-in HashMap: 0.92 sec

@@ -110,7 +110,7 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
     // TODO: Implement the methods of the Map61B Interface below
     // Your code won't compile until you do so!
 
-    public void resize(int capicity) {
+    private void resize(int capicity) {
         MyHashMap<K, V> temp = new MyHashMap<>(capicity, this.maxLoad);
         for (int i = 0; i < this.initialSize; i++) {
             for (Node node : this.buckets[i]) {
@@ -212,12 +212,12 @@ public class MyHashMap<K, V> implements Map61B<K, V> {
 
     @Override
     public V remove(K key) {
-        throw new UnsupportedOperationException();
+        throw  new UnsupportedOperationException();
     }
 
     @Override
     public V remove(K key, V value) {
-        throw new UnsupportedOperationException();
+        throw  new UnsupportedOperationException();
     }
 
     @Override

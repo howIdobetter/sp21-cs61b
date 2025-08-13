@@ -14,7 +14,7 @@ import java.io.File;
  *        import java.util.TreeMap;
  *        class MyClass implements Serializeable, Dumpable {
  *            ...
- *            @Override
+ *            &#064;Override
  *            public void dump() {
  *               System.out.printf("size: %d%nmapping: %s%n", _size, _mapping);
  *            }
@@ -40,4 +40,3 @@ public class DumpObj {
         }
     }
 }
-

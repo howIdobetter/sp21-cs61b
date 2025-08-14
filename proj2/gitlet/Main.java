@@ -17,7 +17,6 @@ public class Main {
         // TODO: what if args is empty?
         if (args == null || args.length == 0) {
             Utils.message("Please enter a command.");
-            System.exit(0);
             return;
         }
         String firstArg = args[0];
@@ -63,6 +62,7 @@ public class Main {
                 break;
             default:
                 Utils.message("No command with that name exists.");
+                return;
         }
     }
 
@@ -89,13 +89,15 @@ public class Main {
         if (!judgeInit()) {
             Utils.message("Not in an initialized Gitlet directory.");
         }
-        System.exit(0);
     }
 
     /** the commit of init */
     private static void init(String[] args) {
         judgeLength(args, 1);
-        judgeInitMessage();
+        if (judgeInit()) {
+            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            return;
+        }
         Repository.setupPersistence();
         Commit initCommit = new Commit("initial commit", new HashMap<>(), null);
         initCommit.writeCommit();
@@ -307,7 +309,10 @@ public class Main {
 
     /** the commit of status */
     private static void status(String[] args) {
-        judgeInitMessage();
+        if (!judgeInit()) {
+            Utils.message("Not in an initialized Gitlet directory.");
+            return;
+        }
         judgeLength(args, 1);
         /** === Branches === */
         Branch branch = Branch.readBranch();
@@ -537,7 +542,7 @@ public class Main {
     private static void rm_branch(String[] args) {
         String branchName = args[1];
         Branch branch = Branch.readBranch();
-        String current_branch = branch.branches.get(branchName);
+        String current_branch = branch.current_branch;
         HashMap<String, String> branches = branch.branches;
         if (!branches.containsKey(branchName)) {
             Utils.message("A branch with that name does not exist.");
@@ -620,16 +625,19 @@ public class Main {
 
         Stage stage = Stage.readStaged();
         if (!stage.add.isEmpty() || !stage.remove.isEmpty()) {
-            throw Utils.error("You have uncommitted changes.");
+            Utils.message("You have uncommitted changes.");
+            return;
         }
 
         Branch branch = Branch.readBranch();
         if (!branch.branches.containsKey(branchName)) {
-            throw Utils.error("A branch with that name does not exist.");
+            Utils.message("A branch with that name does not exist.");
+            return;
         }
 
         if (branch.current_branch.equals(branchName)) {
-            throw Utils.error("Cannot merge a branch with itself.");
+            Utils.message("Cannot merge a branch with itself.");
+            return;
         }
 
         String currentId = branch.branches.get(branch.current_branch);
@@ -645,6 +653,9 @@ public class Main {
             System.out.println("Current branch fast-forwarded.");
             return;
         }
+
+        // 检查未跟踪的文件是否会被覆盖
+        checkUntrackedFiles(branchName);
 
         Commit splitCommit = Commit.readCommit(splitPointId);
         Commit currentCommit = Commit.readCommit(currentId);
@@ -663,11 +674,21 @@ public class Main {
             String givenBlob = givenCommit.contextHash.get(file);
 
             if (Objects.equals(splitBlob, currentBlob) && !Objects.equals(splitBlob, givenBlob)) {
-                // Case 1: Given branch modified
-                writeFileToWorkingDirectory(givenCommit, file);
-                stage.add.put(file, givenBlob);
+                // Case 1: Given branch modified, current branch didn't
+                if (givenBlob != null) {
+                    writeFileToWorkingDirectory(givenCommit, file);
+                    stage.add.put(file, givenBlob);
+                } else {
+                    // Given branch deleted the file
+                    File f = Utils.join(Repository.CWD, file);
+                    if (f.exists()) {
+                        f.delete();
+                    }
+                    stage.remove.add(file);
+                    stage.add.remove(file);
+                }
             } else if (!Objects.equals(splitBlob, currentBlob) && Objects.equals(splitBlob, givenBlob)) {
-                // Case 2: Current branch modified - do nothing
+                // Case 2: Current branch modified, given branch didn't - do nothing
             } else if (Objects.equals(currentBlob, givenBlob)) {
                 // Case 3: Both branches modified the same way - do nothing
             } else if (splitBlob == null && currentBlob != null && givenBlob == null) {
@@ -678,10 +699,14 @@ public class Main {
                 stage.add.put(file, givenBlob);
             } else if (splitBlob != null && Objects.equals(splitBlob, currentBlob) && givenBlob == null) {
                 // Case 6: Given branch deleted the file
-                Utils.join(Repository.CWD, file).delete();
+                File f = Utils.join(Repository.CWD, file);
+                if (f.exists()) {
+                    f.delete();
+                }
                 stage.remove.add(file);
+                stage.add.remove(file);
             } else {
-                // Case 8: Conflict
+                // Case 7: Conflict - both modified differently or one modified and one deleted
                 resolveConflict(file, currentBlob, givenBlob);
                 conflict = true;
             }
@@ -689,7 +714,7 @@ public class Main {
 
         // 8. Save stage and create merge commit
         Utils.writeObject(Stage.stage, stage);
-        
+
         List<String> parents = new ArrayList<>();
         parents.add(currentId);
         parents.add(givenId);
@@ -722,6 +747,8 @@ public class Main {
         conflictBlob.writeBlobToStage();
         Stage stage = Stage.readStaged();
         stage.add.put(file, conflictBlob.sha1);
-        stage.writeStaged(stage);
+        // 确保从remove集合中移除该文件
+        stage.remove.remove(file);
+        Utils.writeObject(Stage.stage, stage);
     }
 }

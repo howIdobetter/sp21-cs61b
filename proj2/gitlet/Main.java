@@ -16,7 +16,8 @@ public class Main {
     public static void main(String[] args) {
         // TODO: what if args is empty?
         if (args == null || args.length == 0) {
-            throw Utils.error("Please enter a command.");
+            Utils.message("Please enter a command.");
+            return;
         }
         String firstArg = args[0];
         switch(firstArg) {
@@ -60,14 +61,15 @@ public class Main {
                 merge(args);
                 break;
             default:
-                throw Utils.error("No command with that name exists.");
+                Utils.message("No command with that name exists.");
         }
     }
 
     /** judge the length of args */
     private static void judgeLength(String[] args, int length) {
         if (args.length != length) {
-            throw Utils.error("Incorrect operands.");
+            Utils.message("Incorrect operands.");
+            return;
         }
     }
 
@@ -84,7 +86,7 @@ public class Main {
     /** judge init message */
     private static void judgeInitMessage() {
         if (!judgeInit()) {
-            throw Utils.error("Not in an initialized Gitlet directory.");
+            Utils.message("Not in an initialized Gitlet directory.");
         }
     }
 
@@ -92,18 +94,19 @@ public class Main {
     private static void init(String[] args) {
         judgeLength(args, 1);
         if (judgeInit()) {
-            throw Utils.error("A Gitlet version-control system already exists in the current directory.");
+            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            return;
         }
         Repository.setupPersistence();
         Commit initCommit = new Commit("initial commit", new HashMap<>(), null);
-        String sha = Utils.sha1((Object) Utils.serialize(initCommit));
+        initCommit.writeCommit();
+        String sha = initCommit.sha;
         Repository.initStaged();
         Repository.changeHead(sha);
         //Repository.changeMaster(sha);
         HashMap<String, String> branches = new HashMap<>();
         branches.put("master", sha);
         Repository.initBranches("master", branches);
-        initCommit.writeCommit();
     }
 
     /** the commit of add */
@@ -114,7 +117,8 @@ public class Main {
         File file;
         file = Utils.join(Repository.CWD, filename);
         if (!file.exists()) {
-            throw Utils.error("File does not exist.");
+            Utils.message("File does not exist.");
+            return;
         }
         String contents = Utils.readContentsAsString(file);
         Blob blob = new Blob(contents);
@@ -143,6 +147,7 @@ public class Main {
         if (hashset != null && hashset.contains(filename)) {
             blob.deleteBlobFromStage();
             stage.add.remove(filename);
+            stage.remove.remove(filename);
             flag = false;
         }
         if (flag) {
@@ -162,6 +167,10 @@ public class Main {
         judgeLength(args, 2);
         /** message */
         String message = args[1];
+        if (message.equals("") || message == null) {
+            Utils.message("Please enter a commit message.");
+            return;
+        }
         /** parent */
         List<String> parent;
         if (parents == null) {
@@ -177,6 +186,10 @@ public class Main {
         Stage stage = Stage.readStaged();
         HashMap<String, String> stageadd = stage.add;
         HashSet<String> stageremove = stage.remove;
+        if (stage.add.isEmpty() && stage.remove.isEmpty()) {
+            Utils.message("No changes added to the commit.");
+            return;
+        }
         for (String filename : stageadd.keySet()) {
             String hash = stageadd.get(filename);
             Blob blob = Blob.readBlobFromStage(hash);
@@ -187,9 +200,8 @@ public class Main {
             hashmap.remove(filename);
         }
         Commit commit = new Commit(message, hashmap, parent);
-
-        String sha1 = Utils.sha1((Object) Utils.serialize(commit));
         commit.writeCommit();
+        String sha1 = commit.sha;
         Repository.changeHead(sha1);
         Branch branch = Branch.readBranch();
         String currentBranch = branch.current_branch;
@@ -209,12 +221,13 @@ public class Main {
         Stage stage = Stage.readStaged();
         HashMap<String, String> hashmap = stage.add;
         HashSet<String> hashset = stage.remove;
-        hashset.remove(filename);
+        hashset.add(filename);
         if (hashmap.containsKey(filename)) {
             String hash = hashmap.get(filename);
             File f = Utils.join(Stage.STAGED_DIR, hash);
             f.delete();
             stage.add.remove(filename);
+            stage.remove.remove(filename);
             flag = true;
         }
         /**if the file is tracked in the current commit, stage it
@@ -230,7 +243,8 @@ public class Main {
             flag = true;
         }
         if (!flag) {
-            throw Utils.error("No reason to remove the file.");
+            Utils.message("No reason to remove the file.");
+            return;
         }
         Utils.writeObject(Stage.stage, stage);
     }
@@ -257,7 +271,7 @@ public class Main {
         List<String> filenamelist = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
         for (String filename : filenamelist) {
             Commit commit = Commit.readCommit(filename);
-            String sha = Utils.sha1((Object) Utils.serialize(commit));
+            String sha = commit.sha;
             printCommitFormat(commit, sha);
         }
     }
@@ -287,13 +301,17 @@ public class Main {
             }
         }
         if (!flag) {
-            throw Utils.error("Found no commit with that message.");
+            Utils.message("Found no commit with that message.");
+            return;
         }
     }
 
     /** the commit of status */
     private static void status(String[] args) {
-        judgeInitMessage();
+        if (!judgeInit()) {
+            Utils.message("Not in an initialized Gitlet directory.");
+            return;
+        }
         judgeLength(args, 1);
         /** === Branches === */
         Branch branch = Branch.readBranch();
@@ -347,12 +365,14 @@ public class Main {
 
             // If no branch with that name exists
             if (!branch.branches.containsKey(branchName)) {
-                throw Utils.error("No such branch exists.");
+                Utils.message("No such branch exists.");
+                return;
             }
 
             // If that branch is the current branch
             if (branch.current_branch.equals(branchName)) {
-                throw Utils.error("No need to checkout the current branch.");
+                Utils.message("No need to checkout the current branch.");
+                return;
             }
 
             // Check for untracked files that would be overwritten
@@ -382,6 +402,11 @@ public class Main {
         } else if (args.length == 4 && args[2].equals("--")) {
             // Case 2: checkout [commit id] -- [file name]
             String commitId = args[1];
+            List<String> allCommits = getAllCommitIds();
+            if (!allCommits.contains(commitId)) {
+                Utils.message("No commit with that id exists.");
+                return;
+            }
             // 支持部分commit ID
             if (commitId.length() < 40) {
                 commitId = findFullCommitId(commitId);
@@ -391,8 +416,20 @@ public class Main {
             writeFileToWorkingDirectory(commit, fileName);
 
         } else {
-            throw Utils.error("Incorrect operands.");
+            Utils.message("Incorrect operands.");
+            return;
         }
+    }
+
+    /**
+     * Returns all commit IDs in the repository as an iterable List
+     * (unordered, just the raw commit IDs from the commit directory)
+     */
+    public static List<String> getAllCommitIds() {
+        judgeInitMessage();
+
+        List<String> commitIds = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
+        return commitIds != null ? commitIds : Collections.emptyList();
     }
 
     /** Helper method to check for untracked files that would be overwritten */
@@ -418,7 +455,8 @@ public class Main {
 
                 // If file is untracked in current branch and would be overwritten
                 if (!inCurrentCommit && !inStageAdd && !inStageRemove && inTargetCommit) {
-                    throw Utils.error("There is an untracked file in the way; delete it, or add and commit it first.");
+                    Utils.message("There is an untracked file in the way; delete it, or add and commit it first.");
+                    return;
                 }
             }
         }
@@ -452,7 +490,8 @@ public class Main {
     /** Helper method to write a single file from commit to working directory */
     private static void writeFileToWorkingDirectory(Commit commit, String fileName) {
         if (!commit.contextHash.containsKey(fileName)) {
-            throw Utils.error("File does not exist in that commit.");
+            Utils.message("File does not exist in that commit.");
+            return;
         }
         String blobId = commit.contextHash.get(fileName);
         Blob blob = Blob.readBlob(blobId);
@@ -491,7 +530,8 @@ public class Main {
         String currentCommitId = Repository.readHead();
         HashMap<String, String> branches = branch.branches;
         if (branches.containsKey(branchName)) {
-            throw Utils.error("A branch with that name already exists.");
+            Utils.message("A branch with that name already exists.");
+            return;
         }
         branches.put(branchName, currentCommitId);
         branch.writeBranch();
@@ -526,7 +566,8 @@ public class Main {
 
         File commitFile = Utils.join(Commit.COMMIT_DIR, commitId);
         if (!commitFile.exists()) {
-            throw Utils.error("No commit with that id exists.");
+            Utils.message("No commit with that id exists.");
+            return;
         }
 
         Commit targetCommit = Commit.readCommit(commitId);
@@ -543,7 +584,8 @@ public class Main {
                 boolean inTarget = targetCommit.contextHash.containsKey(filename);
 
                 if (!inCurrent && !inStage && inTarget) {
-                    throw Utils.error("There is an untracked file in the way; delete it, or add and commit it first.");
+                    Utils.message("There is an untracked file in the way; delete it, or add and commit it first.");
+                    return;
                 }
             }
         }

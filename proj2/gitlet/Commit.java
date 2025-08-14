@@ -24,6 +24,7 @@ public class Commit implements Serializable {
     public HashMap<String, String> contextHash; // File names
     public List<String> parent; // Parent commit hash
     public String timestamp; // Timestamp
+    public String sha;
 
     static final File COMMIT_DIR = Utils.join(Repository.GITLET_DIR, "commits");
 
@@ -57,6 +58,7 @@ public class Commit implements Serializable {
     /** write a Commit. */
     public void writeCommit() {
         String hash = sha1((Object) serialize(this));
+        this.sha = hash;
         File f = join(COMMIT_DIR, hash);
         writeObject(f, this);
     }

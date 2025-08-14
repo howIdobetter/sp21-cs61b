@@ -50,16 +50,18 @@ public class Blob implements Serializable {
         File f = Utils.join(STAGED_DIR, hash);
         writeObject(f, this);
     }
-
-    /** read blob from staged */
-    public static Blob readBlobFromStage(String hash) {
-        File f =  Utils.join(STAGED_DIR, hash);
-        return readObject(f, Blob.class);
-    }
-
-    /** delete blob from staged */
+    
+    /** delete blob from stage */
     public void deleteBlobFromStage() {
         File f = Utils.join(STAGED_DIR, sha1);
         f.delete();
     }
+    
+    /** read blob from stage */
+    public static Blob readBlobFromStage(String hash) {
+        File f = Utils.join(STAGED_DIR, hash);
+        return readObject(f, Blob.class);
+    }
+
+
 }

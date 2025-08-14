@@ -3,8 +3,8 @@ package gitlet;
 import javax.print.attribute.HashPrintServiceAttributeSet;
 import java.io.File;
 import static gitlet.Utils.*;
-import java.util.HashMap;
-import java.util.HashSet;
+
+import java.util.*;
 
 // TODO: any imports you need here
 
@@ -57,7 +57,7 @@ public class Repository {
         HashMap<String, String> map = new HashMap<>();
         HashSet<String> set = new HashSet<>();
         Stage stage = new Stage(map, set);
-        Utils.writeContents(f, stage);
+        Utils.writeObject(f, stage);
     }
 
     /** init branches */
@@ -66,8 +66,39 @@ public class Repository {
         branch.writeBranch();
     }
 
-    /** write to work directory */
-//    public static void writeWorkDirectory(String filename, ) {
-//
-//    }
+    /** find the lca */
+    public static String findSplitPoint(String currentId, String givenId) {
+        Queue<String> queue = new LinkedList<>();
+        Map<String, Integer> depthMap = new HashMap<>();
+        Set<String> currentAncestors = new HashSet<>();
+
+        int depth = 0;
+        String commitId = currentId;
+        while(commitId != null) {
+            currentAncestors.add(commitId);
+            depthMap.put(commitId, depth++);
+            Commit c = Commit.readCommit(commitId);
+            commitId = c.parent != null && !c.parent.isEmpty() ? c.parent.get(0) : null;
+        }
+
+        queue.add(givenId);
+        int minDepth = Integer.MAX_VALUE;
+        String lca = null;
+
+        while (!queue.isEmpty()) {
+            String id = queue.poll();
+            if (currentAncestors.contains(id)) {
+                int d = depthMap.get(id);
+                if (d < minDepth) {
+                    minDepth = d;
+                    lca = id;
+                }
+            }
+            Commit c = Commit.readCommit(id);
+            if (c.parent != null) {
+                queue.addAll(c.parent);
+            }
+        }
+        return lca;
+    }
 }

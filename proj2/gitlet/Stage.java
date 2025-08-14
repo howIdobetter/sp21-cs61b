@@ -42,6 +42,18 @@ public class Stage implements Serializable {
 
     /** read the stage */
     public static Stage readStaged() {
+        if (!stage.exists()) {
+            HashMap<String, String> map = new HashMap<>();
+            HashSet<String> set = new HashSet<>();
+            Stage newStage = new Stage(map, set);
+            writeObject(stage, newStage);
+            return newStage;
+        }
         return readObject(stage, Stage.class);
+    }
+
+    public void add(String filename, String blobId) {
+        add.put(filename, blobId);
+        remove.remove(filename);
     }
 }

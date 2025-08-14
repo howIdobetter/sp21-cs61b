@@ -3,6 +3,8 @@ package gitlet;
 import java.io.File;
 import java.util.*;
 
+import static gitlet.Utils.writeContents;
+
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author Yuhao Wang
  */
@@ -151,14 +153,23 @@ public class Main {
 
     /** the commit of commit */
     public static void commit(String[] args) {
-        /** Now ignore the situation of branch */
+        commit(args, null);
+    }
+    
+    /** the commit of commit with parents */
+    public static void commit(String[] args, List<String> parents) {
         judgeInitMessage();
         judgeLength(args, 2);
         /** message */
         String message = args[1];
         /** parent */
-        List<String> parent = new ArrayList<>();
-        parent.add(Repository.readHead());
+        List<String> parent;
+        if (parents == null) {
+            parent = new ArrayList<>();
+            parent.add(Repository.readHead());
+        } else {
+            parent = parents;
+        }
         /** contextHash */
         File parentfile = Utils.join(Commit.COMMIT_DIR, parent.get(0));
         Commit parentcommit = Utils.readObject(parentfile, Commit.class);
@@ -176,6 +187,7 @@ public class Main {
             hashmap.remove(filename);
         }
         Commit commit = new Commit(message, hashmap, parent);
+
         String sha1 = Utils.sha1((Object) Utils.serialize(commit));
         commit.writeCommit();
         Repository.changeHead(sha1);
@@ -227,13 +239,15 @@ public class Main {
     private static void log(String[] args) {
         judgeInitMessage();
         judgeLength(args, 1);
-        Commit commit = Commit.readCommit(Repository.readHead());
+        String Head = Repository.readHead();
+        Commit commit = Commit.readCommit(Head);
+        String sha = Head;
         while (commit.parent != null) {
-            printCommitFormat(commit);
-            String sha = commit.parent.get(0);
+            printCommitFormat(commit, sha);
+            sha = commit.parent.get(0);
             commit = Commit.readCommit(sha);
         }
-        printCommitFormat(commit);
+        printCommitFormat(commit, sha);
     }
 
     /** the commit of global_log */
@@ -243,16 +257,17 @@ public class Main {
         List<String> filenamelist = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
         for (String filename : filenamelist) {
             Commit commit = Commit.readCommit(filename);
-            printCommitFormat(commit);
+            String sha = Utils.sha1((Object) Utils.serialize(commit));
+            printCommitFormat(commit, sha);
         }
     }
 
     /** print commit formally */
-    private static void printCommitFormat(Commit commit) {
+    private static void printCommitFormat(Commit commit, String sha) {
         String message = commit.message;
-        String sha1 = Utils.sha1((Object) Utils.serialize(commit));
+        String sha1 = sha;
         String timestamp = commit.timestamp;
-        String formatmessage = String.format("===\ncommit %s\nDate: %s\n%s\n", sha1, timestamp, message);
+        String formatmessage = String.format("===\ncommit %s\nDate: %s\n%s\n\n", sha1, timestamp, message);
         System.out.print(formatmessage);
     }
 
@@ -285,9 +300,13 @@ public class Main {
         String current_branch = branch.current_branch;
         HashMap<String, String> branches = branch.branches;
         String s = "=== Branches ===\n";
-        for (String branch_name : branches.keySet()) {
+        List<String> branchNames = new ArrayList<>(branches.keySet());
+        Collections.sort(branchNames);
+        for (String branch_name : branchNames) {
             if (current_branch.equals(branch_name)) {
-                s = String.format("%s*%s\n", s, current_branch);
+                s = String.format("%s*%s\n", s, branch_name);
+            } else {
+                s = String.format("%s%s\n", s, branch_name);
             }
         }
         s = s + "\n";
@@ -363,6 +382,10 @@ public class Main {
         } else if (args.length == 4 && args[2].equals("--")) {
             // Case 2: checkout [commit id] -- [file name]
             String commitId = args[1];
+            // 支持部分commit ID
+            if (commitId.length() < 40) {
+                commitId = findFullCommitId(commitId);
+            }
             String fileName = args[3];
             Commit commit = Commit.readCommit(commitId);
             writeFileToWorkingDirectory(commit, fileName);
@@ -422,7 +445,7 @@ public class Main {
             String blobId = entry.getValue();
             Blob blob = Blob.readBlob(blobId);
             File file = Utils.join(Repository.CWD, fileName);
-            Utils.writeContents(file, blob.contents);
+            writeContents(file, blob.contents);
         }
     }
 
@@ -434,13 +457,29 @@ public class Main {
         String blobId = commit.contextHash.get(fileName);
         Blob blob = Blob.readBlob(blobId);
         File file = Utils.join(Repository.CWD, fileName);
-        Utils.writeContents(file, blob.contents);
+        writeContents(file, blob.contents);
     }
 
     /** Helper method to check if a path is a regular file (not directory) */
     private static boolean isWorkFile(String fileName) {
         File file = Utils.join(Repository.CWD, fileName);
         return file.isFile();
+    }
+    
+    /** Helper method to find full commit ID from abbreviated ID */
+    private static String findFullCommitId(String abbreviatedId) {
+        List<String> commitFiles = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
+        if (commitFiles == null) {
+            throw Utils.error("No commit with that id exists.");
+        }
+        
+        for (String commitId : commitFiles) {
+            if (commitId.startsWith(abbreviatedId)) {
+                return commitId;
+            }
+        }
+        
+        throw Utils.error("No commit with that id exists.");
     }
 
     /** The commit of branch */
@@ -449,14 +488,12 @@ public class Main {
         judgeLength(args, 2);
         String branchName = args[1];
         Branch branch = Branch.readBranch();
-        String current_branch = branch.branches.get(branchName);
+        String currentCommitId = Repository.readHead();
         HashMap<String, String> branches = branch.branches;
         if (branches.containsKey(branchName)) {
             throw Utils.error("A branch with that name already exists.");
         }
-        branches.put(branchName, current_branch);
-        Repository.changeHead(branchName);
-        branch.current_branch = branchName;
+        branches.put(branchName, currentCommitId);
         branch.writeBranch();
     }
 
@@ -482,6 +519,10 @@ public class Main {
         judgeLength(args, 2);
 
         String commitId = args[1];
+        // 支持部分commit ID
+        if (commitId.length() < 40) {
+            commitId = findFullCommitId(commitId);
+        }
 
         File commitFile = Utils.join(Commit.COMMIT_DIR, commitId);
         if (!commitFile.exists()) {
@@ -521,7 +562,7 @@ public class Main {
             String blobId = entry.getValue();
             Blob blob = Blob.readBlob(blobId);
             File file = Utils.join(Repository.CWD, filename);
-            Utils.writeContents(file, blob.contents);
+            writeContents(file, blob.contents);
         }
 
         Branch branch = Branch.readBranch();
@@ -535,5 +576,112 @@ public class Main {
     private static void merge(String[] args) {
         judgeInitMessage();
         judgeLength(args, 2);
+        String branchName = args[1];
+
+        Stage stage = Stage.readStaged();
+        if (!stage.add.isEmpty() || !stage.remove.isEmpty()) {
+            throw Utils.error("You have uncommitted changes.");
+        }
+
+        Branch branch = Branch.readBranch();
+        if (!branch.branches.containsKey(branchName)) {
+            throw Utils.error("A branch with that name does not exist.");
+        }
+
+        if (branch.current_branch.equals(branchName)) {
+            throw Utils.error("Cannot merge a branch with itself.");
+        }
+
+        String currentId = branch.branches.get(branch.current_branch);
+        String givenId = branch.branches.get(branchName);
+        String splitPointId = Repository.findSplitPoint(currentId, givenId);
+
+        if (splitPointId.equals(givenId)) {
+            System.out.println("Given branch is an ancestor of the current branch.");
+            return;
+        }
+        if (splitPointId.equals(currentId)) {
+            checkout(new String[]{"checkout", branchName});
+            System.out.println("Current branch fast-forwarded.");
+            return;
+        }
+
+        Commit splitCommit = Commit.readCommit(splitPointId);
+        Commit currentCommit = Commit.readCommit(currentId);
+        Commit givenCommit = Commit.readCommit(givenId);
+
+        boolean conflict = false;
+        Set<String> allFiles = new HashSet<>();
+        allFiles.addAll(splitCommit.contextHash.keySet());
+        allFiles.addAll(currentCommit.contextHash.keySet());
+        allFiles.addAll(givenCommit.contextHash.keySet());
+
+        // 7. Process each file status
+        for (String file : allFiles) {
+            String splitBlob = splitCommit.contextHash.get(file);
+            String currentBlob = currentCommit.contextHash.get(file);
+            String givenBlob = givenCommit.contextHash.get(file);
+
+            if (Objects.equals(splitBlob, currentBlob) && !Objects.equals(splitBlob, givenBlob)) {
+                // Case 1: Given branch modified
+                writeFileToWorkingDirectory(givenCommit, file);
+                stage.add.put(file, givenBlob);
+            } else if (!Objects.equals(splitBlob, currentBlob) && Objects.equals(splitBlob, givenBlob)) {
+                // Case 2: Current branch modified - do nothing
+            } else if (Objects.equals(currentBlob, givenBlob)) {
+                // Case 3: Both branches modified the same way - do nothing
+            } else if (splitBlob == null && currentBlob != null && givenBlob == null) {
+                // Case 4: Only exists in current branch - do nothing
+            } else if (splitBlob == null && currentBlob == null && givenBlob != null) {
+                // Case 5: Only exists in given branch
+                writeFileToWorkingDirectory(givenCommit, file);
+                stage.add.put(file, givenBlob);
+            } else if (splitBlob != null && Objects.equals(splitBlob, currentBlob) && givenBlob == null) {
+                // Case 6: Given branch deleted the file
+                Utils.join(Repository.CWD, file).delete();
+                stage.remove.add(file);
+            } else {
+                // Case 8: Conflict
+                resolveConflict(file, currentBlob, givenBlob);
+                conflict = true;
+            }
+        }
+
+        // 8. Save stage and create merge commit
+        Utils.writeObject(Stage.stage, stage);
+        
+        List<String> parents = new ArrayList<>();
+        parents.add(currentId);
+        parents.add(givenId);
+        commit(new String[]{"commit", "Merged " + branchName + " into " + branch.current_branch + "."}, parents);
+
+        // 9. Print conflict information
+        if (conflict) {
+            System.out.println("Encountered a merge conflict.");
+        }
+    }
+
+    private static void resolveConflict(String file, String currentBlobId, String givenBlobId) {
+        String currentContent = currentBlobId != null ?
+                Blob.readBlob(currentBlobId).contents : "";
+        String givenContent = givenBlobId != null ?
+                Blob.readBlob(givenBlobId).contents : "";
+
+        String conflictContent = "<<<<<<< HEAD\n" +
+                currentContent +
+                "=======\n" +
+                givenContent +
+                ">>>>>>>\n";
+
+        // 写入工作目录
+        File f = Utils.join(Repository.CWD, file);
+        writeContents(f, conflictContent);
+
+        // 添加到暂存区
+        Blob conflictBlob = new Blob(conflictContent);
+        conflictBlob.writeBlobToStage();
+        Stage stage = Stage.readStaged();
+        stage.add.put(file, conflictBlob.sha1);
+        stage.writeStaged(stage);
     }
 }

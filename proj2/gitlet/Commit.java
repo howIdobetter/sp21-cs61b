@@ -21,22 +21,22 @@ public class Commit implements Serializable {
      */
 
     public String message; // 提交信息
-    public HashMap<String, String> contextHash; // 文件名
-    public List<String> parent; // 父提交hash值
-    public String timestamp; //时间戳
+    public HashMap<String, String> contextHash; // File names
+    public List<String> parent; // Parent commit hash
+    public String timestamp; // Timestamp
 
     static final File COMMIT_DIR = Utils.join(Repository.GITLET_DIR, "commits");
 
     /* TODO: fill in the rest of this class. */
-    public Commit(String message, HashMap<String, String> contextHash, List<String> parent) {
+    public Commit(String message, HashMap<String, String> contextHash, List<String> parents) {
         this.message = message;
-        this.parent = parent;
+        this.parent = parents;
         this.contextHash = contextHash;
         this.timestamp = formatCurrentTime();
     }
 
     /** Get timestamp */
-    /** 格式化当前时间为指定格式（Sat Nov 11 12:30:00 2017 -0800） */
+    /** Format current time to specified format (Sat Nov 11 12:30:00 2017 -0800) */
     private String formatCurrentTime() {
         SimpleDateFormat sdf = new SimpleDateFormat(
                 "EEE MMM dd HH:mm:ss yyyy Z",
@@ -60,4 +60,5 @@ public class Commit implements Serializable {
         File f = join(COMMIT_DIR, hash);
         writeObject(f, this);
     }
+
 }

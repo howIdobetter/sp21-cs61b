@@ -59,6 +59,10 @@ public class Blob implements Serializable {
     /** read blob from stage */
     public static Blob readBlobFromStage(String hash) {
         File f = Utils.join(STAGED_DIR, hash);
+        if (!f.exists()) {
+            // 如果暂存文件不存在，尝试从对象库读取
+            return readBlob(hash);
+        }
         return readObject(f, Blob.class);
     }
 

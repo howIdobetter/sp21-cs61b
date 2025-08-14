@@ -1,7 +1,5 @@
 package gitlet;
 
-// TODO: any imports you need here
-
 import java.io.File;
 import java.io.Serializable;
 import static gitlet.Utils.*;
@@ -10,7 +8,6 @@ import java.util.*;
 import java.text.SimpleDateFormat;
 
 /** Represents a gitlet commit object.
- *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
  *  @author Yuhao Wang
@@ -28,7 +25,6 @@ public class Commit implements Serializable {
 
     static final File COMMIT_DIR = Utils.join(Repository.GITLET_DIR, "commits");
 
-    /* TODO: fill in the rest of this class. */
     public Commit(String message, HashMap<String, String> contextHash, List<String> parents) {
         this.message = message;
         this.parent = parents;

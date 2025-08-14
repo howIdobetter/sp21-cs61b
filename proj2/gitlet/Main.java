@@ -14,7 +14,6 @@ public class Main {
      *  <COMMAND> <OPERAND1> <OPERAND2> ... 
      */
     public static void main(String[] args) {
-        // TODO: what if args is empty?
         if (args == null || args.length == 0) {
             Utils.message("Please enter a command.");
             return;
@@ -193,7 +192,13 @@ public class Main {
         }
         for (String filename : stageadd.keySet()) {
             String hash = stageadd.get(filename);
-            Blob blob = Blob.readBlobFromStage(hash);
+            Blob blob;
+            try {
+                blob = Blob.readBlobFromStage(hash);
+            } catch (IllegalArgumentException e) {
+                // 如果暂存文件不存在，尝试从对象库读取
+                blob = Blob.readBlob(hash);
+            }
             blob.writeBlob();
             hashmap.put(filename, blob.sha1);
         }
@@ -256,13 +261,12 @@ public class Main {
         judgeLength(args, 1);
         String Head = Repository.readHead();
         Commit commit = Commit.readCommit(Head);
-        String sha = Head;
         while (commit.parent != null) {
-            printCommitFormat(commit, sha);
-            sha = commit.parent.get(0);
+            printCommitFormat(commit, commit.sha);
+            String sha = commit.parent.get(0);
             commit = Commit.readCommit(sha);
         }
-        printCommitFormat(commit, sha);
+        printCommitFormat(commit, commit.sha);
     }
 
     /** the commit of global_log */
@@ -441,11 +445,12 @@ public class Main {
         Commit currentCommit = Commit.readCommit(branch.branches.get(branch.current_branch));
         Stage stage = Stage.readStaged();
 
+        // 获取当前工作目录中的所有文件
         List<String> workingFiles = Utils.plainFilenamesIn(Repository.CWD);
         if (workingFiles != null) {
             for (String fileName : workingFiles) {
-                // Skip directories
-                if (!isWorkFile(fileName)) {
+                // 跳过目录和.gitlet目录
+                if (!isWorkFile(fileName) || fileName.startsWith(".gitlet")) {
                     continue;
                 }
 
@@ -454,10 +459,18 @@ public class Main {
                 boolean inStageRemove = stage.remove.contains(fileName);
                 boolean inTargetCommit = targetCommit.contextHash.containsKey(fileName);
 
-                // If file is untracked in current branch and would be overwritten
-                if (!inCurrentCommit && !inStageAdd && !inStageRemove && inTargetCommit) {
-                    Utils.message("There is an untracked file in the way; delete it, or add and commit it first.");
-                    return;
+                // 如果文件在当前分支未跟踪且会被目标分支覆盖
+                if (!inCurrentCommit && !inStageAdd && inTargetCommit) {
+                    // 检查文件内容是否不同
+                    File workingFile = Utils.join(Repository.CWD, fileName);
+                    String workingContent = Utils.readContentsAsString(workingFile);
+                    String targetBlobId = targetCommit.contextHash.get(fileName);
+                    Blob targetBlob = Blob.readBlob(targetBlobId);
+                    
+                    if (!workingContent.equals(targetBlob.contents)) {
+                        Utils.message("There is an untracked file in the way; delete it, or add and commit it first.");
+                        System.exit(0);
+                    }
                 }
             }
         }
@@ -623,27 +636,30 @@ public class Main {
         judgeLength(args, 2);
         String branchName = args[1];
 
+        // 1. 检查前置条件
         Stage stage = Stage.readStaged();
         if (!stage.add.isEmpty() || !stage.remove.isEmpty()) {
-            Utils.message("You have uncommitted changes.");
+            System.out.println("You have uncommitted changes.");
             return;
         }
 
         Branch branch = Branch.readBranch();
         if (!branch.branches.containsKey(branchName)) {
-            Utils.message("A branch with that name does not exist.");
+            System.out.println("A branch with that name does not exist.");
             return;
         }
 
         if (branch.current_branch.equals(branchName)) {
-            Utils.message("Cannot merge a branch with itself.");
+            System.out.println("Cannot merge a branch with itself.");
             return;
         }
 
+        // 2. 获取提交对象
         String currentId = branch.branches.get(branch.current_branch);
         String givenId = branch.branches.get(branchName);
         String splitPointId = Repository.findSplitPoint(currentId, givenId);
 
+        // 3. 检查特殊情况
         if (splitPointId.equals(givenId)) {
             System.out.println("Given branch is an ancestor of the current branch.");
             return;
@@ -654,75 +670,94 @@ public class Main {
             return;
         }
 
-        // 检查未跟踪的文件是否会被覆盖
-        checkUntrackedFiles(branchName);
+        // 4. 检查未跟踪文件
+        checkUntrackedFilesForMerge(currentId, givenId);
 
+        // 5. 开始合并
         Commit splitCommit = Commit.readCommit(splitPointId);
         Commit currentCommit = Commit.readCommit(currentId);
         Commit givenCommit = Commit.readCommit(givenId);
-
         boolean conflict = false;
+
+        // 6. 收集所有相关文件
         Set<String> allFiles = new HashSet<>();
         allFiles.addAll(splitCommit.contextHash.keySet());
         allFiles.addAll(currentCommit.contextHash.keySet());
         allFiles.addAll(givenCommit.contextHash.keySet());
 
-        // 7. Process each file status
+        // 7. 处理每个文件
         for (String file : allFiles) {
             String splitBlob = splitCommit.contextHash.get(file);
             String currentBlob = currentCommit.contextHash.get(file);
             String givenBlob = givenCommit.contextHash.get(file);
 
-            if (Objects.equals(splitBlob, currentBlob) && !Objects.equals(splitBlob, givenBlob)) {
-                // Case 1: Given branch modified, current branch didn't
-                if (givenBlob != null) {
+            // Case 1: 在split点不存在
+            if (splitBlob == null) {
+                if (currentBlob != null && givenBlob != null && !currentBlob.equals(givenBlob)) {
+                    resolveConflict(file, currentBlob, givenBlob);
+                    conflict = true;
+                } else if (currentBlob == null && givenBlob != null) {
+                    // 检出给定分支版本
                     writeFileToWorkingDirectory(givenCommit, file);
                     stage.add.put(file, givenBlob);
-                } else {
-                    // Given branch deleted the file
-                    File f = Utils.join(Repository.CWD, file);
-                    if (f.exists()) {
-                        f.delete();
+                }
+            }
+            // Case 2: 在split点存在
+            else {
+                boolean changedInCurrent = !Objects.equals(splitBlob, currentBlob);
+                boolean changedInGiven = !Objects.equals(splitBlob, givenBlob);
+
+                if (!changedInCurrent && changedInGiven) {
+                    if (givenBlob == null) {
+                        // 给定分支删除：删除文件
+                        File f = Utils.join(Repository.CWD, file);
+                        if (f.exists()) f.delete();
+                        stage.remove.add(file);
+                        stage.add.remove(file);
+                    } else {
+                        // 给定分支修改：检出文件
+                        writeFileToWorkingDirectory(givenCommit, file);
+                        stage.add.put(file, givenBlob);
+                        stage.remove.remove(file);
                     }
-                    stage.remove.add(file);
-                    stage.add.remove(file);
+                } else if (changedInCurrent && changedInGiven && !Objects.equals(currentBlob, givenBlob)) {
+                    resolveConflict(file, currentBlob, givenBlob);
+                    conflict = true;
                 }
-            } else if (!Objects.equals(splitBlob, currentBlob) && Objects.equals(splitBlob, givenBlob)) {
-                // Case 2: Current branch modified, given branch didn't - do nothing
-            } else if (Objects.equals(currentBlob, givenBlob)) {
-                // Case 3: Both branches modified the same way - do nothing
-            } else if (splitBlob == null && currentBlob != null && givenBlob == null) {
-                // Case 4: Only exists in current branch - do nothing
-            } else if (splitBlob == null && currentBlob == null && givenBlob != null) {
-                // Case 5: Only exists in given branch
-                writeFileToWorkingDirectory(givenCommit, file);
-                stage.add.put(file, givenBlob);
-            } else if (splitBlob != null && Objects.equals(splitBlob, currentBlob) && givenBlob == null) {
-                // Case 6: Given branch deleted the file
-                File f = Utils.join(Repository.CWD, file);
-                if (f.exists()) {
-                    f.delete();
-                }
-                stage.remove.add(file);
-                stage.add.remove(file);
-            } else {
-                // Case 7: Conflict - both modified differently or one modified and one deleted
-                resolveConflict(file, currentBlob, givenBlob);
-                conflict = true;
             }
         }
 
-        // 8. Save stage and create merge commit
+        // 8. 创建合并提交
         Utils.writeObject(Stage.stage, stage);
-
         List<String> parents = new ArrayList<>();
         parents.add(currentId);
         parents.add(givenId);
         commit(new String[]{"commit", "Merged " + branchName + " into " + branch.current_branch + "."}, parents);
 
-        // 9. Print conflict information
+        // 9. 输出冲突信息
         if (conflict) {
             System.out.println("Encountered a merge conflict.");
+        }
+    }
+
+    /** 检查未跟踪文件是否会被覆盖 */
+    private static void checkUntrackedFilesForMerge(String currentId, String givenId) {
+        Commit currentCommit = Commit.readCommit(currentId);
+        Commit givenCommit = Commit.readCommit(givenId);
+        Stage stage = Stage.readStaged();
+
+        List<String> workingFiles = Utils.plainFilenamesIn(Repository.CWD);
+        if (workingFiles == null) return;
+
+        for (String file : workingFiles) {
+            boolean inCurrent = currentCommit.contextHash.containsKey(file);
+            boolean inGiven = givenCommit.contextHash.containsKey(file);
+            boolean staged = stage.add.containsKey(file) || stage.remove.contains(file);
+
+            if (!inCurrent && !staged && inGiven) {
+                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+                System.exit(0);
+            }
         }
     }
 

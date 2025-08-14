@@ -17,6 +17,7 @@ public class Main {
         // TODO: what if args is empty?
         if (args == null || args.length == 0) {
             Utils.message("Please enter a command.");
+            System.exit(0);
             return;
         }
         String firstArg = args[0];
@@ -88,15 +89,13 @@ public class Main {
         if (!judgeInit()) {
             Utils.message("Not in an initialized Gitlet directory.");
         }
+        System.exit(0);
     }
 
     /** the commit of init */
     private static void init(String[] args) {
         judgeLength(args, 1);
-        if (judgeInit()) {
-            System.out.println("A Gitlet version-control system already exists in the current directory.");
-            return;
-        }
+        judgeInitMessage();
         Repository.setupPersistence();
         Commit initCommit = new Commit("initial commit", new HashMap<>(), null);
         initCommit.writeCommit();
@@ -308,10 +307,7 @@ public class Main {
 
     /** the commit of status */
     private static void status(String[] args) {
-        if (!judgeInit()) {
-            Utils.message("Not in an initialized Gitlet directory.");
-            return;
-        }
+        judgeInitMessage();
         judgeLength(args, 1);
         /** === Branches === */
         Branch branch = Branch.readBranch();
@@ -403,13 +399,13 @@ public class Main {
             // Case 2: checkout [commit id] -- [file name]
             String commitId = args[1];
             List<String> allCommits = getAllCommitIds();
-            if (!allCommits.contains(commitId)) {
-                Utils.message("No commit with that id exists.");
-                return;
-            }
             // 支持部分commit ID
             if (commitId.length() < 40) {
                 commitId = findFullCommitId(commitId);
+            }
+            if (!allCommits.contains(commitId)) {
+                Utils.message("No commit with that id exists.");
+                return;
             }
             String fileName = args[3];
             Commit commit = Commit.readCommit(commitId);
@@ -544,10 +540,12 @@ public class Main {
         String current_branch = branch.branches.get(branchName);
         HashMap<String, String> branches = branch.branches;
         if (!branches.containsKey(branchName)) {
-            throw Utils.error("A branch with that name does not exist.");
+            Utils.message("A branch with that name does not exist.");
+            return;
         }
         if (current_branch.equals(branchName)) {
-            throw Utils.error("Cannot remove the current branch.");
+            Utils.message("Cannot remove the current branch.");
+            return;
         }
         branches.remove(branchName);
         branch.writeBranch();

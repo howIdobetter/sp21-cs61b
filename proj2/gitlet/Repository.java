@@ -1,6 +1,5 @@
 package gitlet;
 
-import javax.print.attribute.HashPrintServiceAttributeSet;
 import java.io.File;
 import static gitlet.Utils.*;
 

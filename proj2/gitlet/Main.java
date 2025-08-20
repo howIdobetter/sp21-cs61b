@@ -36,7 +36,7 @@ public class Main {
                 log(args);
                 break;
             case "global-log":
-                global_log(args);
+                globalLog(args);
                 break;
             case "find":
                 find(args);
@@ -51,7 +51,7 @@ public class Main {
                 branch(args);
                 break;
             case "rm-branch":
-                rm_branch(args);
+                rmBranch(args);
                 break;
             case "reset":
                 reset(args);
@@ -65,35 +65,31 @@ public class Main {
         }
     }
 
-    /** judge the length of args */
-    private static void judgeLength(String[] args, int length) {
+    /** Validates that args has the expected length, exits program if not. */
+    private static void validateArgsLength(String[] args, int length) {
         if (args.length != length) {
             Utils.message("Incorrect operands.");
-            return;
+            System.exit(0);
         }
     }
 
-    /** judge the init */
-    private static boolean judgeInit() {
-        File dir = Repository.GITLET_DIR;
-        if (dir.exists()) {
-            return true;
-        } else {
-            return false;
-        }
+    /** Checks if gitlet repository is initialized. */
+    private static boolean isInitialized() {
+        return Repository.GITLET_DIR.exists();
     }
 
-    /** judge init message */
-    private static void judgeInitMessage() {
-        if (!judgeInit()) {
+    /** Exits program if gitlet repository is not initialized. */
+    private static void exitIfNotInitialized() {
+        if (!isInitialized()) {
             Utils.message("Not in an initialized Gitlet directory.");
+            System.exit(0);
         }
     }
 
-    /** the commit of init */
+    /** Initializes a gitlet repository. */
     private static void init(String[] args) {
-        judgeLength(args, 1);
-        if (judgeInit()) {
+        validateArgsLength(args, 1);
+        if (isInitialized()) {
             System.out.println("A Gitlet version-control system already exists in the current directory.");
             return;
         }
@@ -109,10 +105,10 @@ public class Main {
         Repository.initBranches("master", branches);
     }
 
-    /** the commit of add */
+    /** Adds a file to the staging area. */
     private static void add(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         String filename = args[1];
         File file;
         file = Utils.join(Repository.CWD, filename);
@@ -161,10 +157,10 @@ public class Main {
         commit(args, null);
     }
     
-    /** the commit of commit with parents */
+    /** Creates a commit with the given message. */
     public static void commit(String[] args, List<String> parents) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         /** message */
         String message = args[1];
         if (message.equals("") || message == null) {
@@ -217,10 +213,10 @@ public class Main {
         Stage.clearStaged();
     }
 
-    /** the commit of rm */
+    /** Removes a file from tracking. */
     public static void rm(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         String filename = args[1];
         boolean flag = false;
         /** Unstage the file if it is currently staged for addition. */
@@ -255,10 +251,10 @@ public class Main {
         Utils.writeObject(Stage.stage, stage);
     }
 
-    /** the commit of log */
+    /** Displays commit history starting from HEAD. */
     private static void log(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 1);
+        exitIfNotInitialized();
+        validateArgsLength(args, 1);
         String Head = Repository.readHead();
         Commit commit = Commit.readCommit(Head);
         while (commit.parent != null) {
@@ -269,10 +265,10 @@ public class Main {
         printCommitFormat(commit, commit.sha);
     }
 
-    /** the commit of global_log */
-    private static void global_log(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 1);
+    /** Displays all commits ever made. */
+    private static void globalLog(String[] args) {
+        exitIfNotInitialized();
+        validateArgsLength(args, 1);
         List<String> filenamelist = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
         for (String filename : filenamelist) {
             Commit commit = Commit.readCommit(filename);
@@ -290,10 +286,10 @@ public class Main {
         System.out.print(formatmessage);
     }
 
-    /** the commit of find */
+    /** Finds and prints commits with the given message. */
     private static void find(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         String commitMessage = args[1];
         List<String> filenamelist = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
         boolean flag = false;
@@ -311,25 +307,25 @@ public class Main {
         }
     }
 
-    /** the commit of status */
+    /** Displays status of the repository. */
     private static void status(String[] args) {
-        if (!judgeInit()) {
+        if (!isInitialized()) {
             Utils.message("Not in an initialized Gitlet directory.");
             return;
         }
-        judgeLength(args, 1);
+        validateArgsLength(args, 1);
         /** === Branches === */
         Branch branch = Branch.readBranch();
-        String current_branch = branch.current_branch;
+        String currentBranch = branch.current_branch;
         HashMap<String, String> branches = branch.branches;
         String s = "=== Branches ===\n";
         List<String> branchNames = new ArrayList<>(branches.keySet());
         Collections.sort(branchNames);
-        for (String branch_name : branchNames) {
-            if (current_branch.equals(branch_name)) {
-                s = String.format("%s*%s\n", s, branch_name);
+        for (String branchName : branchNames) {
+            if (currentBranch.equals(branchName)) {
+                s = String.format("%s*%s\n", s, branchName);
             } else {
-                s = String.format("%s%s\n", s, branch_name);
+                s = String.format("%s%s\n", s, branchName);
             }
         }
         s = s + "\n";
@@ -360,9 +356,9 @@ public class Main {
         System.out.print(s);
     }
 
-    /** the commit of checkout */
+    /** Checks out files, commits, or branches. */
     private static void checkout(String[] args) {
-        judgeInitMessage();
+        exitIfNotInitialized();
         if (args.length == 2) {
             // Case 3: checkout [branch name]
             String branchName = args[1];
@@ -431,7 +427,7 @@ public class Main {
      * (unordered, just the raw commit IDs from the commit directory)
      */
     public static List<String> getAllCommitIds() {
-        judgeInitMessage();
+        exitIfNotInitialized();
 
         List<String> commitIds = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
         return commitIds != null ? commitIds : Collections.emptyList();
@@ -535,10 +531,10 @@ public class Main {
         throw Utils.error("No commit with that id exists.");
     }
 
-    /** The commit of branch */
+    /** Creates a new branch. */
     private static void branch(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         String branchName = args[1];
         Branch branch = Branch.readBranch();
         String currentCommitId = Repository.readHead();
@@ -551,17 +547,19 @@ public class Main {
         branch.writeBranch();
     }
 
-    /** The commit of rm_branch */
-    private static void rm_branch(String[] args) {
+    /** Removes a branch. */
+    private static void rmBranch(String[] args) {
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         String branchName = args[1];
         Branch branch = Branch.readBranch();
-        String current_branch = branch.current_branch;
+        String currentBranch = branch.current_branch;
         HashMap<String, String> branches = branch.branches;
         if (!branches.containsKey(branchName)) {
             Utils.message("A branch with that name does not exist.");
             return;
         }
-        if (current_branch.equals(branchName)) {
+        if (currentBranch.equals(branchName)) {
             Utils.message("Cannot remove the current branch.");
             return;
         }
@@ -569,10 +567,10 @@ public class Main {
         branch.writeBranch();
     }
 
-    /** The commit of reset */
+    /** Resets to a given commit. */
     private static void reset(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
 
         String commitId = args[1];
         // 支持部分commit ID
@@ -630,10 +628,10 @@ public class Main {
         Repository.changeHead(commitId);
     }
 
-    /** The commit of merge */
+    /** Merges the given branch into the current branch. */
     private static void merge(String[] args) {
-        judgeInitMessage();
-        judgeLength(args, 2);
+        exitIfNotInitialized();
+        validateArgsLength(args, 2);
         String branchName = args[1];
 
         // 1. 检查前置条件

@@ -18,12 +18,12 @@ public class Branch implements Serializable {
         this.branches = branches;
     }
 
-    /** read Branch */
+    /** Reads Branch from disk. */
     public static Branch readBranch() {
         return readObject(BRANCHES, Branch.class);
     }
 
-    /** write Branch */
+    /** Writes Branch to disk. */
     public void writeBranch() {
         writeObject(BRANCHES, this);
     }

@@ -43,15 +43,13 @@ public class Commit implements Serializable {
         return sdf.format(new Date());
     }
 
-    /** read a Commit by the sha1. */
-    public static Commit readCommit(String hash1) {
-        Commit m;
-        File f = join(COMMIT_DIR, hash1);
-        m = readObject(f, Commit.class);
-        return m;
+    /** Reads a Commit by the SHA-1 hash. */
+    public static Commit readCommit(String hash) {
+        File f = join(COMMIT_DIR, hash);
+        return readObject(f, Commit.class);
     }
 
-    /** write a Commit. */
+    /** Writes a Commit to disk. */
     public void writeCommit() {
         String hash = sha1((Object) serialize(this));
         this.sha = hash;

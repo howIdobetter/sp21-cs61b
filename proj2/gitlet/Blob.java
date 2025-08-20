@@ -24,43 +24,41 @@ public class Blob implements Serializable {
         this.sha1 = sha1((Object) serialize(this));
     }
 
-    /** write blob to ~/.gitlet/blobs */
+    /** Writes blob to ~/.gitlet/blobs */
     public void writeBlob() {
-        String hash = this.sha1;
-        File f = Utils.join(BLOB_DIR, hash);
+        File f = Utils.join(BLOB_DIR, this.sha1);
         writeObject(f, this);
     }
 
-    /** read blob from ~ */
+    /** Reads blob from object store. */
     public static Blob readBlob(String hash) {
         File f = Utils.join(BLOB_DIR, hash);
         return readObject(f, Blob.class);
     }
 
-    /** delete blob */
+    /** Deletes blob from object store. */
     public void deleteBlob() {
         File f = Utils.join(BLOB_DIR, sha1);
         f.delete();
     }
 
-    /** write blob to ~/.gitlet/stage */
+    /** Writes blob to ~/.gitlet/stage */
     public void writeBlobToStage() {
-        String hash = this.sha1;
-        File f = Utils.join(STAGED_DIR, hash);
+        File f = Utils.join(STAGED_DIR, this.sha1);
         writeObject(f, this);
     }
-    
-    /** delete blob from stage */
+
+    /** Deletes blob from stage. */
     public void deleteBlobFromStage() {
         File f = Utils.join(STAGED_DIR, sha1);
         f.delete();
     }
     
-    /** read blob from stage */
+    /** Reads blob from stage. */
     public static Blob readBlobFromStage(String hash) {
         File f = Utils.join(STAGED_DIR, hash);
         if (!f.exists()) {
-            // 如果暂存文件不存在，尝试从对象库读取
+            // If staged file doesn't exist, try reading from object store
             return readBlob(hash);
         }
         return readObject(f, Blob.class);

@@ -192,7 +192,7 @@ public class Main {
             try {
                 blob = Blob.readBlobFromStage(hash);
             } catch (IllegalArgumentException e) {
-                // 如果暂存文件不存在，尝试从对象库读取
+                // If staged file doesn't exist, try reading from object store
                 blob = Blob.readBlob(hash);
             }
             blob.writeBlob();
@@ -255,12 +255,11 @@ public class Main {
     private static void log(String[] args) {
         exitIfNotInitialized();
         validateArgsLength(args, 1);
-        String Head = Repository.readHead();
-        Commit commit = Commit.readCommit(Head);
+        String head = Repository.readHead();
+        Commit commit = Commit.readCommit(head);
         while (commit.parent != null) {
             printCommitFormat(commit, commit.sha);
-            String sha = commit.parent.get(0);
-            commit = Commit.readCommit(sha);
+            commit = Commit.readCommit(commit.parent.get(0));
         }
         printCommitFormat(commit, commit.sha);
     }
@@ -269,21 +268,18 @@ public class Main {
     private static void globalLog(String[] args) {
         exitIfNotInitialized();
         validateArgsLength(args, 1);
-        List<String> filenamelist = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
-        for (String filename : filenamelist) {
+        List<String> filenameList = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
+        for (String filename : filenameList) {
             Commit commit = Commit.readCommit(filename);
-            String sha = commit.sha;
-            printCommitFormat(commit, sha);
+            printCommitFormat(commit, commit.sha);
         }
     }
 
-    /** print commit formally */
+    /** Formats and prints commit information. */
     private static void printCommitFormat(Commit commit, String sha) {
-        String message = commit.message;
-        String sha1 = sha;
-        String timestamp = commit.timestamp;
-        String formatmessage = String.format("===\ncommit %s\nDate: %s\n%s\n\n", sha1, timestamp, message);
-        System.out.print(formatmessage);
+        String formatMessage = String.format("===\ncommit %s\nDate: %s\n%s\n\n", 
+                                            sha, commit.timestamp, commit.message);
+        System.out.print(formatMessage);
     }
 
     /** Finds and prints commits with the given message. */
@@ -291,17 +287,16 @@ public class Main {
         exitIfNotInitialized();
         validateArgsLength(args, 2);
         String commitMessage = args[1];
-        List<String> filenamelist = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
-        boolean flag = false;
-        for (String filename : filenamelist) {
+        List<String> filenameList = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
+        boolean found = false;
+        for (String filename : filenameList) {
             Commit commit = Commit.readCommit(filename);
-            String message = commit.message;
-            if (message.equals(commitMessage)) {
+            if (commit.message.equals(commitMessage)) {
                 System.out.println(filename);
-                flag = true;
+                found = true;
             }
         }
-        if (!flag) {
+        if (!found) {
             Utils.message("Found no commit with that message.");
             return;
         }
@@ -455,9 +450,9 @@ public class Main {
                 boolean inStageRemove = stage.remove.contains(fileName);
                 boolean inTargetCommit = targetCommit.contextHash.containsKey(fileName);
 
-                // 如果文件在当前分支未跟踪且会被目标分支覆盖
+                // If file is untracked in current branch but would be overwritten by target branch
                 if (!inCurrentCommit && !inStageAdd && inTargetCommit) {
-                    // 检查文件内容是否不同
+                    // Check if file content is different
                     File workingFile = Utils.join(Repository.CWD, fileName);
                     String workingContent = Utils.readContentsAsString(workingFile);
                     String targetBlobId = targetCommit.contextHash.get(fileName);
@@ -634,7 +629,7 @@ public class Main {
         validateArgsLength(args, 2);
         String branchName = args[1];
 
-        // 1. 检查前置条件
+        // 1. Check preconditions
         Stage stage = Stage.readStaged();
         if (!stage.add.isEmpty() || !stage.remove.isEmpty()) {
             System.out.println("You have uncommitted changes.");
@@ -657,7 +652,7 @@ public class Main {
         String givenId = branch.branches.get(branchName);
         String splitPointId = Repository.findSplitPoint(currentId, givenId);
 
-        // 3. 检查特殊情况
+        // 3. Check special cases
         if (splitPointId.equals(givenId)) {
             System.out.println("Given branch is an ancestor of the current branch.");
             return;
@@ -668,52 +663,52 @@ public class Main {
             return;
         }
 
-        // 4. 检查未跟踪文件
+        // 4. Check untracked files
         checkUntrackedFilesForMerge(currentId, givenId);
 
-        // 5. 开始合并
+        // 5. Begin merge
         Commit splitCommit = Commit.readCommit(splitPointId);
         Commit currentCommit = Commit.readCommit(currentId);
         Commit givenCommit = Commit.readCommit(givenId);
         boolean conflict = false;
 
-        // 6. 收集所有相关文件
+        // 6. Collect all relevant files
         Set<String> allFiles = new HashSet<>();
         allFiles.addAll(splitCommit.contextHash.keySet());
         allFiles.addAll(currentCommit.contextHash.keySet());
         allFiles.addAll(givenCommit.contextHash.keySet());
 
-        // 7. 处理每个文件
+        // 7. Process each file
         for (String file : allFiles) {
             String splitBlob = splitCommit.contextHash.get(file);
             String currentBlob = currentCommit.contextHash.get(file);
             String givenBlob = givenCommit.contextHash.get(file);
 
-            // Case 1: 在split点不存在
+            // Case 1: Does not exist at split point
             if (splitBlob == null) {
                 if (currentBlob != null && givenBlob != null && !currentBlob.equals(givenBlob)) {
                     resolveConflict(file, currentBlob, givenBlob);
                     conflict = true;
                 } else if (currentBlob == null && givenBlob != null) {
-                    // 检出给定分支版本
+                    // Check out given branch version
                     writeFileToWorkingDirectory(givenCommit, file);
                     stage.add.put(file, givenBlob);
                 }
             }
-            // Case 2: 在split点存在
+            // Case 2: Exists at split point
             else {
                 boolean changedInCurrent = !Objects.equals(splitBlob, currentBlob);
                 boolean changedInGiven = !Objects.equals(splitBlob, givenBlob);
 
                 if (!changedInCurrent && changedInGiven) {
                     if (givenBlob == null) {
-                        // 给定分支删除：删除文件
+                        // Given branch deleted: delete file
                         File f = Utils.join(Repository.CWD, file);
                         if (f.exists()) f.delete();
                         stage.remove.add(file);
                         stage.add.remove(file);
                     } else {
-                        // 给定分支修改：检出文件
+                        // Given branch modified: check out file
                         writeFileToWorkingDirectory(givenCommit, file);
                         stage.add.put(file, givenBlob);
                         stage.remove.remove(file);
@@ -725,7 +720,7 @@ public class Main {
             }
         }
 
-        // 8. 创建合并提交
+        // 8. Create merge commit
         Utils.writeObject(Stage.stage, stage);
         List<String> parents = new ArrayList<>();
         parents.add(currentId);
@@ -738,7 +733,7 @@ public class Main {
         }
     }
 
-    /** 检查未跟踪文件是否会被覆盖 */
+    /** Checks if untracked files would be overwritten. */
     private static void checkUntrackedFilesForMerge(String currentId, String givenId) {
         Commit currentCommit = Commit.readCommit(currentId);
         Commit givenCommit = Commit.readCommit(givenId);

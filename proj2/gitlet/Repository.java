@@ -36,32 +36,31 @@ public class Repository {
         Blob.BLOB_DIR.mkdir();
     }
 
-    /** change the head */
+    /** Changes the HEAD pointer to the given hash. */
     public static void changeHead(String hash) {
         writeContents(HEAD, hash);
     }
 
-    /** get the head */
+    /** Gets the current HEAD commit hash. */
     public static String readHead() {
         return readContentsAsString(HEAD);
     }
 
-    /** init staged */
+    /** Initializes the staging area. */
     public static void initStaged() {
-        File f = Stage.stage;
-        HashMap<String, String> map = new HashMap<>();
-        HashSet<String> set = new HashSet<>();
-        Stage stage = new Stage(map, set);
-        Utils.writeObject(f, stage);
+        HashMap<String, String> addMap = new HashMap<>();
+        HashSet<String> removeSet = new HashSet<>();
+        Stage stage = new Stage(addMap, removeSet);
+        Utils.writeObject(Stage.stage, stage);
     }
 
-    /** init branches */
-    public static void initBranches(String current_branch, HashMap<String, String> branches) {
-        Branch branch = new Branch(current_branch, branches);
+    /** Initializes branches with the given current branch and branches map. */
+    public static void initBranches(String currentBranch, HashMap<String, String> branches) {
+        Branch branch = new Branch(currentBranch, branches);
         branch.writeBranch();
     }
 
-    /** find the lca */
+    /** Finds the split point (LCA) between two commits. */
     public static String findSplitPoint(String currentId, String givenId) {
         Queue<String> queue = new LinkedList<>();
         Map<String, Integer> depthMap = new HashMap<>();

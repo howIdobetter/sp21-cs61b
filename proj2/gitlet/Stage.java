@@ -21,11 +21,11 @@ public class Stage implements Serializable {
         this.remove = remove;
     }
 
-    /** clear the staged area */
+    /** Clears the staged area. */
     public static void clearStaged() {
         List<String> stagedBlobs = plainFilenamesIn(STAGED_DIR);
 
-        if (stagedBlobs != null && stagedBlobs.isEmpty()) {
+        if (stagedBlobs == null || stagedBlobs.isEmpty()) {
             return;
         }
 
@@ -35,12 +35,12 @@ public class Stage implements Serializable {
         }
     }
 
-    /** write the stage */
+    /** Writes the stage to disk. */
     public static void writeStaged(Stage s) {
         writeObject(stage, s);
     }
 
-    /** read the stage */
+    /** Reads the stage from disk. */
     public static Stage readStaged() {
         if (!stage.exists()) {
             HashMap<String, String> map = new HashMap<>();

@@ -6,28 +6,22 @@ import static gitlet.Utils.*;
 import java.util.*;
 
 /** Represents a gitlet repository.
- *  does at a high level.
+ *  Provides static methods for repository operations and maintains
+ *  references to key repository directories and files.
  *
  *  @author Yuhao Wang
  */
 public class Repository {
-    /**
-     *
-     * List all instance variables of the Repository class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided two examples for you.
-     */
-
     /** The current working directory. */
     public static final File CWD = new File(System.getProperty("user.dir"));
     /** The .gitlet directory. */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
-    /** The Head directory. */
+    /** The HEAD file storing current commit hash. */
     public static final File HEAD = join(GITLET_DIR, "head");
 
-    /* TODO: fill in the rest of this class. */
-    /**
-     * Persistence init method.
+    /** 
+     * Initializes persistence by creating necessary directories.
+     * Creates .gitlet, commits, stage, and blobs directories.
      */
     public static void setupPersistence() {
         GITLET_DIR.mkdir();
@@ -36,17 +30,25 @@ public class Repository {
         Blob.BLOB_DIR.mkdir();
     }
 
-    /** Changes the HEAD pointer to the given hash. */
+    /** 
+     * Changes the HEAD pointer to the given hash.
+     * @param hash the SHA-1 hash to set as HEAD
+     */
     public static void changeHead(String hash) {
         writeContents(HEAD, hash);
     }
 
-    /** Gets the current HEAD commit hash. */
+    /** 
+     * Gets the current HEAD commit hash.
+     * @return SHA-1 hash of the current HEAD commit
+     */
     public static String readHead() {
         return readContentsAsString(HEAD);
     }
 
-    /** Initializes the staging area. */
+    /** 
+     * Initializes the staging area with empty add and remove sets.
+     */
     public static void initStaged() {
         HashMap<String, String> addMap = new HashMap<>();
         HashSet<String> removeSet = new HashSet<>();
@@ -54,13 +56,23 @@ public class Repository {
         Utils.writeObject(Stage.stage, stage);
     }
 
-    /** Initializes branches with the given current branch and branches map. */
+    /** 
+     * Initializes branches with the given current branch and branches map.
+     * @param currentBranch the name of the current branch
+     * @param branches map of branch names to commit hashes
+     */
     public static void initBranches(String currentBranch, HashMap<String, String> branches) {
         Branch branch = new Branch(currentBranch, branches);
         branch.writeBranch();
     }
 
-    /** Finds the split point (LCA) between two commits. */
+    /** 
+     * Finds the split point (LCA - Lowest Common Ancestor) between two commits.
+     * Uses BFS to traverse the commit history and find the nearest common ancestor.
+     * @param currentId SHA-1 hash of current branch's commit
+     * @param givenId SHA-1 hash of branch being merged
+     * @return SHA-1 hash of the split point commit
+     */
     public static String findSplitPoint(String currentId, String givenId) {
         Queue<String> queue = new LinkedList<>();
         Map<String, Integer> depthMap = new HashMap<>();

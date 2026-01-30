@@ -120,74 +120,76 @@ public class Main {
         Blob blob = new Blob(contents);
         blob.writeBlobToStage();
         Stage stage = Stage.readStaged();
-        boolean flag = true;
+        boolean fileModified = true;
         Commit commit = Commit.readCommit(Repository.readHead());
-        HashMap<String, String> hashmap = commit.contextHash;
-        if (hashmap != null && hashmap.containsKey(filename)) {
-            String hash = hashmap.get(filename);
+        HashMap<String, String> commitFiles = commit.contextHash;
+        if (commitFiles != null && commitFiles.containsKey(filename)) {
+            String hash = commitFiles.get(filename);
             if (Objects.equals(hash, blob.sha1)) {
                 blob.deleteBlobFromStage();
                 stage.add.remove(filename);
-                flag = false;
+                fileModified = false;
             }
         }
-        hashmap = stage.add;
-        HashSet<String> hashset = stage.remove;
-        if (hashmap != null && hashmap.containsKey(filename)) {
-            String hash = hashmap.get(filename);
+        HashMap<String, String> stagedFiles = stage.add;
+        HashSet<String> removedFiles = stage.remove;
+        if (stagedFiles != null && stagedFiles.containsKey(filename)) {
+            String hash = stagedFiles.get(filename);
             File f = Utils.join(Stage.STAGED_DIR, hash);
             f.delete();
             stage.add.put(filename, blob.sha1);
-            flag = false;
+            fileModified = false;
         }
-        if (hashset != null && hashset.contains(filename)) {
+        if (removedFiles != null && removedFiles.contains(filename)) {
             blob.deleteBlobFromStage();
             stage.add.remove(filename);
             stage.remove.remove(filename);
-            flag = false;
+            fileModified = false;
         }
-        if (flag) {
+        if (fileModified) {
             stage.add.put(filename, blob.sha1);
         }
         Utils.writeObject(Stage.stage, stage);
     }
 
-    /** the commit of commit */
+    /** Creates a commit with the given message. 
+     *  This is an overload that uses the default parent (current HEAD).
+     */
     public static void commit(String[] args) {
         commit(args, null);
     }
     
-    /** Creates a commit with the given message. */
+    /** Creates a commit with the given message.
+     *  @param args command line arguments [commit, message]
+     *  @param parents list of parent commit SHA-1 hashes (null for single parent)
+     */
     public static void commit(String[] args, List<String> parents) {
         exitIfNotInitialized();
         validateArgsLength(args, 2);
-        /** message */
         String message = args[1];
         if (message.equals("") || message == null) {
             Utils.message("Please enter a commit message.");
             return;
         }
-        /** parent */
-        List<String> parent;
+        List<String> parentList;
         if (parents == null) {
-            parent = new ArrayList<>();
-            parent.add(Repository.readHead());
+            parentList = new ArrayList<>();
+            parentList.add(Repository.readHead());
         } else {
-            parent = parents;
+            parentList = parents;
         }
-        /** contextHash */
-        File parentfile = Utils.join(Commit.COMMIT_DIR, parent.get(0));
-        Commit parentcommit = Utils.readObject(parentfile, Commit.class);
-        HashMap<String, String> hashmap = new HashMap<>(parentcommit.contextHash);
+        File parentFile = Utils.join(Commit.COMMIT_DIR, parentList.get(0));
+        Commit parentCommit = Utils.readObject(parentFile, Commit.class);
+        HashMap<String, String> fileMap = new HashMap<>(parentCommit.contextHash);
         Stage stage = Stage.readStaged();
-        HashMap<String, String> stageadd = stage.add;
-        HashSet<String> stageremove = stage.remove;
+        HashMap<String, String> stagedAdded = stage.add;
+        HashSet<String> stagedRemoved = stage.remove;
         if (stage.add.isEmpty() && stage.remove.isEmpty()) {
             Utils.message("No changes added to the commit.");
             return;
         }
-        for (String filename : stageadd.keySet()) {
-            String hash = stageadd.get(filename);
+        for (String filename : stagedAdded.keySet()) {
+            String hash = stagedAdded.get(filename);
             Blob blob;
             try {
                 blob = Blob.readBlobFromStage(hash);
@@ -196,12 +198,12 @@ public class Main {
                 blob = Blob.readBlob(hash);
             }
             blob.writeBlob();
-            hashmap.put(filename, blob.sha1);
+            fileMap.put(filename, blob.sha1);
         }
-        for (String filename : stageremove) {
-            hashmap.remove(filename);
+        for (String filename : stagedRemoved) {
+            fileMap.remove(filename);
         }
-        Commit commit = new Commit(message, hashmap, parent);
+        Commit commit = new Commit(message, fileMap, parentList);
         commit.writeCommit();
         String sha1 = commit.sha;
         Repository.changeHead(sha1);
@@ -213,38 +215,36 @@ public class Main {
         Stage.clearStaged();
     }
 
-    /** Removes a file from tracking. */
+    /** Removes a file from tracking.
+     *  Unstages the file if currently staged for addition.
+     *  If tracked in current commit, stages for removal and deletes from working directory.
+     */
     public static void rm(String[] args) {
         exitIfNotInitialized();
         validateArgsLength(args, 2);
         String filename = args[1];
-        boolean flag = false;
-        /** Unstage the file if it is currently staged for addition. */
+        boolean fileRemoved = false;
         Stage stage = Stage.readStaged();
-        HashMap<String, String> hashmap = stage.add;
-        HashSet<String> hashset = stage.remove;
-        hashset.add(filename);
-        if (hashmap.containsKey(filename)) {
-            String hash = hashmap.get(filename);
+        HashMap<String, String> stagedFiles = stage.add;
+        HashSet<String> removedFiles = stage.remove;
+        removedFiles.add(filename);
+        if (stagedFiles.containsKey(filename)) {
+            String hash = stagedFiles.get(filename);
             File f = Utils.join(Stage.STAGED_DIR, hash);
             f.delete();
             stage.add.remove(filename);
             stage.remove.remove(filename);
-            flag = true;
+            fileRemoved = true;
         }
-        /**if the file is tracked in the current commit, stage it
-         * for removal and remove the file from the working directory
-         * if the user has not already done so (do not remove it
-         * unless it is tracked in the current commit).*/
         Commit commit = Commit.readCommit(Repository.readHead());
-        HashMap<String, String> hashmap1 = commit.contextHash;
-        if (hashmap1 != null && hashmap1.containsKey(filename)) {
-            String hash = hashmap1.get(filename);
+        HashMap<String, String> commitFiles = commit.contextHash;
+        if (commitFiles != null && commitFiles.containsKey(filename)) {
+            String hash = commitFiles.get(filename);
             File f = Utils.join(Repository.CWD, filename);
             f.delete();
-            flag = true;
+            fileRemoved = true;
         }
-        if (!flag) {
+        if (!fileRemoved) {
             Utils.message("No reason to remove the file.");
             return;
         }
@@ -309,46 +309,42 @@ public class Main {
             return;
         }
         validateArgsLength(args, 1);
-        /** === Branches === */
         Branch branch = Branch.readBranch();
         String currentBranch = branch.current_branch;
         HashMap<String, String> branches = branch.branches;
-        String s = "=== Branches ===\n";
+        StringBuilder statusOutput = new StringBuilder("=== Branches ===\n");
         List<String> branchNames = new ArrayList<>(branches.keySet());
         Collections.sort(branchNames);
         for (String branchName : branchNames) {
             if (currentBranch.equals(branchName)) {
-                s = String.format("%s*%s\n", s, branchName);
+                statusOutput.append(String.format("*%s\n", branchName));
             } else {
-                s = String.format("%s%s\n", s, branchName);
+                statusOutput.append(String.format("%s\n", branchName));
             }
         }
-        s = s + "\n";
+        statusOutput.append("\n");
 
         Stage stage = Stage.readStaged();
-        /** === Staged Files === */
-        HashMap<String, String> stage_add = stage.add;
-        s += "=== Staged Files ===\n";
-        if (stage_add != null) {
-            for (String stage_name : stage_add.keySet()) {
-                s = String.format("%s%s\n", s, stage_name);
+        HashMap<String, String> stagedFiles = stage.add;
+        statusOutput.append("=== Staged Files ===\n");
+        if (stagedFiles != null) {
+            for (String stageName : stagedFiles.keySet()) {
+                statusOutput.append(String.format("%s\n", stageName));
             }
         }
-        s += "\n";
-        /** === Removed Files === */
-        HashSet<String> stage_remove = stage.remove;
-        s += "=== Removed Files ===\n";
-        if (stage_remove != null) {
-            for (String stage_name : stage_remove) {
-                s = String.format("%s%s\n", s, stage_name);
+        statusOutput.append("\n");
+        HashSet<String> removedFiles = stage.remove;
+        statusOutput.append("=== Removed Files ===\n");
+        if (removedFiles != null) {
+            for (String stageName : removedFiles) {
+                statusOutput.append(String.format("%s\n", stageName));
             }
         }
-        s += "\n";
+        statusOutput.append("\n");
 
-        s += "=== Modifications Not Staged For Commit ===\n\n=== Untracked Files ===\n\n";
+        statusOutput.append("=== Modifications Not Staged For Commit ===\n\n=== Untracked Files ===\n\n");
 
-        /** print */
-        System.out.print(s);
+        System.out.print(statusOutput.toString());
     }
 
     /** Checks out files, commits, or branches. */
@@ -399,7 +395,7 @@ public class Main {
             // Case 2: checkout [commit id] -- [file name]
             String commitId = args[1];
             List<String> allCommits = getAllCommitIds();
-            // 支持部分commit ID
+            // Support abbreviated commit IDs
             if (commitId.length() < 40) {
                 commitId = findFullCommitId(commitId);
             }
@@ -418,8 +414,9 @@ public class Main {
     }
 
     /**
-     * Returns all commit IDs in the repository as an iterable List
-     * (unordered, just the raw commit IDs from the commit directory)
+     * Returns all commit IDs in the repository as an iterable List.
+     * The list is unordered and contains raw commit IDs from the commit directory.
+     * @return list of all commit SHA-1 hashes
      */
     public static List<String> getAllCommitIds() {
         exitIfNotInitialized();
@@ -428,7 +425,10 @@ public class Main {
         return commitIds != null ? commitIds : Collections.emptyList();
     }
 
-    /** Helper method to check for untracked files that would be overwritten */
+    /** 
+     * Helper method to check for untracked files that would be overwritten.
+     * @param targetBranchName name of the branch being checked out
+     */
     private static void checkUntrackedFiles(String targetBranchName) {
         Branch branch = Branch.readBranch();
         String targetCommitId = branch.branches.get(targetBranchName);
@@ -436,11 +436,11 @@ public class Main {
         Commit currentCommit = Commit.readCommit(branch.branches.get(branch.current_branch));
         Stage stage = Stage.readStaged();
 
-        // 获取当前工作目录中的所有文件
+        // Get all files in current working directory
         List<String> workingFiles = Utils.plainFilenamesIn(Repository.CWD);
         if (workingFiles != null) {
             for (String fileName : workingFiles) {
-                // 跳过目录和.gitlet目录
+                // Skip directories and .gitlet directory
                 if (!isWorkFile(fileName) || fileName.startsWith(".gitlet")) {
                     continue;
                 }
@@ -467,7 +467,10 @@ public class Main {
         }
     }
 
-    /** Helper method to update working directory to match a commit */
+    /** 
+     * Helper method to update working directory to match a commit.
+     * @param targetCommit the commit to update working directory to match
+     */
     private static void updateWorkingDirectory(Commit targetCommit) {
         // First, remove all files tracked in current commit but not in target
         Branch branch = Branch.readBranch();
@@ -492,7 +495,11 @@ public class Main {
         }
     }
 
-    /** Helper method to write a single file from commit to working directory */
+    /** 
+     * Helper method to write a single file from commit to working directory.
+     * @param commit the commit to extract the file from
+     * @param fileName the name of the file to write
+     */
     private static void writeFileToWorkingDirectory(Commit commit, String fileName) {
         if (!commit.contextHash.containsKey(fileName)) {
             Utils.message("File does not exist in that commit.");
@@ -504,13 +511,22 @@ public class Main {
         writeContents(file, blob.contents);
     }
 
-    /** Helper method to check if a path is a regular file (not directory) */
+    /** 
+     * Helper method to check if a path is a regular file (not directory).
+     * @param fileName the name of the file to check
+     * @return true if the path is a regular file, false otherwise
+     */
     private static boolean isWorkFile(String fileName) {
         File file = Utils.join(Repository.CWD, fileName);
         return file.isFile();
     }
     
-    /** Helper method to find full commit ID from abbreviated ID */
+    /** 
+     * Helper method to find full commit ID from abbreviated ID.
+     * @param abbreviatedId the abbreviated commit ID (prefix)
+     * @return the full commit ID
+     * @throws GitletException if no commit with that ID exists
+     */
     private static String findFullCommitId(String abbreviatedId) {
         List<String> commitFiles = Utils.plainFilenamesIn(Commit.COMMIT_DIR);
         if (commitFiles == null) {
@@ -568,7 +584,7 @@ public class Main {
         validateArgsLength(args, 2);
 
         String commitId = args[1];
-        // 支持部分commit ID
+        // Support abbreviated commit IDs
         if (commitId.length() < 40) {
             commitId = findFullCommitId(commitId);
         }
@@ -629,7 +645,7 @@ public class Main {
         validateArgsLength(args, 2);
         String branchName = args[1];
 
-        // 1. Check preconditions
+        // Check preconditions
         Stage stage = Stage.readStaged();
         if (!stage.add.isEmpty() || !stage.remove.isEmpty()) {
             System.out.println("You have uncommitted changes.");
@@ -647,12 +663,12 @@ public class Main {
             return;
         }
 
-        // 2. 获取提交对象
+        // Get commit objects
         String currentId = branch.branches.get(branch.current_branch);
         String givenId = branch.branches.get(branchName);
         String splitPointId = Repository.findSplitPoint(currentId, givenId);
 
-        // 3. Check special cases
+        // Check special cases
         if (splitPointId.equals(givenId)) {
             System.out.println("Given branch is an ancestor of the current branch.");
             return;
@@ -663,22 +679,22 @@ public class Main {
             return;
         }
 
-        // 4. Check untracked files
+        // Check untracked files
         checkUntrackedFilesForMerge(currentId, givenId);
 
-        // 5. Begin merge
+        // Begin merge
         Commit splitCommit = Commit.readCommit(splitPointId);
         Commit currentCommit = Commit.readCommit(currentId);
         Commit givenCommit = Commit.readCommit(givenId);
         boolean conflict = false;
 
-        // 6. Collect all relevant files
+        // Collect all relevant files
         Set<String> allFiles = new HashSet<>();
         allFiles.addAll(splitCommit.contextHash.keySet());
         allFiles.addAll(currentCommit.contextHash.keySet());
         allFiles.addAll(givenCommit.contextHash.keySet());
 
-        // 7. Process each file
+        // Process each file
         for (String file : allFiles) {
             String splitBlob = splitCommit.contextHash.get(file);
             String currentBlob = currentCommit.contextHash.get(file);
@@ -720,20 +736,24 @@ public class Main {
             }
         }
 
-        // 8. Create merge commit
+        // Create merge commit
         Utils.writeObject(Stage.stage, stage);
         List<String> parents = new ArrayList<>();
         parents.add(currentId);
         parents.add(givenId);
         commit(new String[]{"commit", "Merged " + branchName + " into " + branch.current_branch + "."}, parents);
 
-        // 9. 输出冲突信息
+        // Print conflict message if necessary
         if (conflict) {
             System.out.println("Encountered a merge conflict.");
         }
     }
 
-    /** Checks if untracked files would be overwritten. */
+    /** 
+     * Checks if untracked files would be overwritten during merge.
+     * @param currentId SHA-1 hash of current branch's commit
+     * @param givenId SHA-1 hash of branch being merged in
+     */
     private static void checkUntrackedFilesForMerge(String currentId, String givenId) {
         Commit currentCommit = Commit.readCommit(currentId);
         Commit givenCommit = Commit.readCommit(givenId);
@@ -754,6 +774,12 @@ public class Main {
         }
     }
 
+    /**
+     * Resolves a merge conflict by creating a conflict marker file.
+     * @param file the filename with the conflict
+     * @param currentBlobId SHA-1 hash of current branch's blob (null if doesn't exist)
+     * @param givenBlobId SHA-1 hash of given branch's blob (null if doesn't exist)
+     */
     private static void resolveConflict(String file, String currentBlobId, String givenBlobId) {
         String currentContent = currentBlobId != null ?
                 Blob.readBlob(currentBlobId).contents : "";
@@ -766,16 +792,16 @@ public class Main {
                 givenContent +
                 ">>>>>>>\n";
 
-        // 写入工作目录
+        // Write to working directory
         File f = Utils.join(Repository.CWD, file);
         writeContents(f, conflictContent);
 
-        // 添加到暂存区
+        // Add to staging area
         Blob conflictBlob = new Blob(conflictContent);
         conflictBlob.writeBlobToStage();
         Stage stage = Stage.readStaged();
         stage.add.put(file, conflictBlob.sha1);
-        // 确保从remove集合中移除该文件
+        // Ensure file is removed from remove set
         stage.remove.remove(file);
         Utils.writeObject(Stage.stage, stage);
     }

@@ -17,10 +17,15 @@ public class Commit implements Serializable {
      * We need parent, hashes, timestamp and message.
      */
 
-    public String message; // 提交信息
-    public HashMap<String, String> contextHash; // File names
-    public List<String> parent; // Parent commit hash
-    public String timestamp; // Timestamp
+    /** Commit message. */
+    public String message;
+    /** Maps file names to blob SHA-1 hashes. */
+    public HashMap<String, String> contextHash;
+    /** List of parent commit SHA-1 hashes. */
+    public List<String> parent;
+    /** Commit timestamp. */
+    public String timestamp;
+    /** SHA-1 hash of this commit. */
     public String sha;
 
     static final File COMMIT_DIR = Utils.join(Repository.GITLET_DIR, "commits");
@@ -32,8 +37,10 @@ public class Commit implements Serializable {
         this.timestamp = formatCurrentTime();
     }
 
-    /** Get timestamp */
-    /** Format current time to specified format (Sat Nov 11 12:30:00 2017 -0800) */
+    /**
+     * Formats current time to specified format (Sat Nov 11 12:30:00 2017 -0800).
+     * @return formatted timestamp string
+     */
     private String formatCurrentTime() {
         SimpleDateFormat sdf = new SimpleDateFormat(
                 "EEE MMM dd HH:mm:ss yyyy Z",
@@ -43,15 +50,13 @@ public class Commit implements Serializable {
         return sdf.format(new Date());
     }
 
-    /** read a Commit by the sha1. */
-    public static Commit readCommit(String hash1) {
-        Commit m;
-        File f = join(COMMIT_DIR, hash1);
-        m = readObject(f, Commit.class);
-        return m;
+    /** Reads a Commit by the SHA-1 hash. */
+    public static Commit readCommit(String hash) {
+        File f = join(COMMIT_DIR, hash);
+        return readObject(f, Commit.class);
     }
 
-    /** write a Commit. */
+    /** Writes a Commit to disk. */
     public void writeCommit() {
         String hash = sha1((Object) serialize(this));
         this.sha = hash;

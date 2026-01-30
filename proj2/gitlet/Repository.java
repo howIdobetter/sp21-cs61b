@@ -19,7 +19,7 @@ public class Repository {
     /** The HEAD file storing current commit hash. */
     public static final File HEAD = join(GITLET_DIR, "head");
 
-    /** 
+    /**
      * Initializes persistence by creating necessary directories.
      * Creates .gitlet, commits, stage, and blobs directories.
      */
@@ -30,7 +30,7 @@ public class Repository {
         Blob.BLOB_DIR.mkdir();
     }
 
-    /** 
+    /**
      * Changes the HEAD pointer to the given hash.
      * @param hash the SHA-1 hash to set as HEAD
      */
@@ -38,7 +38,7 @@ public class Repository {
         writeContents(HEAD, hash);
     }
 
-    /** 
+    /**
      * Gets the current HEAD commit hash.
      * @return SHA-1 hash of the current HEAD commit
      */
@@ -46,7 +46,7 @@ public class Repository {
         return readContentsAsString(HEAD);
     }
 
-    /** 
+    /**
      * Initializes the staging area with empty add and remove sets.
      */
     public static void initStaged() {
@@ -56,7 +56,7 @@ public class Repository {
         Utils.writeObject(Stage.stage, stage);
     }
 
-    /** 
+    /**
      * Initializes branches with the given current branch and branches map.
      * @param currentBranch the name of the current branch
      * @param branches map of branch names to commit hashes
@@ -66,7 +66,7 @@ public class Repository {
         branch.writeBranch();
     }
 
-    /** 
+    /**
      * Finds the split point (LCA - Lowest Common Ancestor) between two commits.
      * Uses BFS to traverse the commit history and find the nearest common ancestor.
      * @param currentId SHA-1 hash of current branch's commit

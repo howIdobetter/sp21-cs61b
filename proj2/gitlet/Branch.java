@@ -31,7 +31,7 @@ public class Branch implements Serializable {
         this.branches = branches;
     }
 
-    /** 
+    /**
      * Reads Branch from disk.
      * @return the Branch object
      */
@@ -39,7 +39,7 @@ public class Branch implements Serializable {
         return readObject(BRANCHES, Branch.class);
     }
 
-    /** 
+    /**
      * Writes Branch to disk.
      */
     public void writeBranch() {

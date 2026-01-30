@@ -37,8 +37,9 @@ public class Commit implements Serializable {
         this.timestamp = formatCurrentTime();
     }
 
-    /** Formats current time to specified format (Sat Nov 11 12:30:00 2017 -0800).
-     *  @return formatted timestamp string
+    /**
+     * Formats current time to specified format (Sat Nov 11 12:30:00 2017 -0800).
+     * @return formatted timestamp string
      */
     private String formatCurrentTime() {
         SimpleDateFormat sdf = new SimpleDateFormat(

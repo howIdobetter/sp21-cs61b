@@ -132,7 +132,7 @@ public class Main {
             }
         }
         HashMap<String, String> stagedFiles = stage.add;
-        HashSet<String> removedFiles = stage.remove;
+        HashSet<String> stagedForRemoval = stage.remove;
         if (stagedFiles != null && stagedFiles.containsKey(filename)) {
             String hash = stagedFiles.get(filename);
             File f = Utils.join(Stage.STAGED_DIR, hash);
@@ -140,7 +140,7 @@ public class Main {
             stage.add.put(filename, blob.sha1);
             fileModified = false;
         }
-        if (removedFiles != null && removedFiles.contains(filename)) {
+        if (stagedForRemoval != null && stagedForRemoval.contains(filename)) {
             blob.deleteBlobFromStage();
             stage.add.remove(filename);
             stage.remove.remove(filename);
@@ -226,8 +226,8 @@ public class Main {
         boolean fileRemoved = false;
         Stage stage = Stage.readStaged();
         HashMap<String, String> stagedFiles = stage.add;
-        HashSet<String> removedFiles = stage.remove;
-        removedFiles.add(filename);
+        HashSet<String> stagedForRemoval = stage.remove;
+        stagedForRemoval.add(filename);
         if (stagedFiles.containsKey(filename)) {
             String hash = stagedFiles.get(filename);
             File f = Utils.join(Stage.STAGED_DIR, hash);
@@ -317,9 +317,9 @@ public class Main {
         Collections.sort(branchNames);
         for (String branchName : branchNames) {
             if (currentBranch.equals(branchName)) {
-                statusOutput.append(String.format("*%s\n", branchName));
+                statusOutput.append("*").append(branchName).append("\n");
             } else {
-                statusOutput.append(String.format("%s\n", branchName));
+                statusOutput.append(branchName).append("\n");
             }
         }
         statusOutput.append("\n");
@@ -328,16 +328,16 @@ public class Main {
         HashMap<String, String> stagedFiles = stage.add;
         statusOutput.append("=== Staged Files ===\n");
         if (stagedFiles != null) {
-            for (String stageName : stagedFiles.keySet()) {
-                statusOutput.append(String.format("%s\n", stageName));
+            for (String fileName : stagedFiles.keySet()) {
+                statusOutput.append(fileName).append("\n");
             }
         }
         statusOutput.append("\n");
-        HashSet<String> removedFiles = stage.remove;
+        HashSet<String> stagedForRemoval = stage.remove;
         statusOutput.append("=== Removed Files ===\n");
-        if (removedFiles != null) {
-            for (String stageName : removedFiles) {
-                statusOutput.append(String.format("%s\n", stageName));
+        if (stagedForRemoval != null) {
+            for (String fileName : stagedForRemoval) {
+                statusOutput.append(fileName).append("\n");
             }
         }
         statusOutput.append("\n");
@@ -425,7 +425,7 @@ public class Main {
         return commitIds != null ? commitIds : Collections.emptyList();
     }
 
-    /** 
+    /**
      * Helper method to check for untracked files that would be overwritten.
      * @param targetBranchName name of the branch being checked out
      */
@@ -467,7 +467,7 @@ public class Main {
         }
     }
 
-    /** 
+    /**
      * Helper method to update working directory to match a commit.
      * @param targetCommit the commit to update working directory to match
      */
@@ -495,7 +495,7 @@ public class Main {
         }
     }
 
-    /** 
+    /**
      * Helper method to write a single file from commit to working directory.
      * @param commit the commit to extract the file from
      * @param fileName the name of the file to write
@@ -511,7 +511,7 @@ public class Main {
         writeContents(file, blob.contents);
     }
 
-    /** 
+    /**
      * Helper method to check if a path is a regular file (not directory).
      * @param fileName the name of the file to check
      * @return true if the path is a regular file, false otherwise
@@ -521,7 +521,7 @@ public class Main {
         return file.isFile();
     }
     
-    /** 
+    /**
      * Helper method to find full commit ID from abbreviated ID.
      * @param abbreviatedId the abbreviated commit ID (prefix)
      * @return the full commit ID
@@ -749,7 +749,7 @@ public class Main {
         }
     }
 
-    /** 
+    /**
      * Checks if untracked files would be overwritten during merge.
      * @param currentId SHA-1 hash of current branch's commit
      * @param givenId SHA-1 hash of branch being merged in

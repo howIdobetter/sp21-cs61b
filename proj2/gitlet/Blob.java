@@ -31,7 +31,7 @@ public class Blob implements Serializable {
         this.sha1 = sha1((Object) serialize(this));
     }
 
-    /** 
+    /**
      * Writes blob to ~/.gitlet/blobs directory.
      */
     public void writeBlob() {
@@ -39,7 +39,7 @@ public class Blob implements Serializable {
         writeObject(f, this);
     }
 
-    /** 
+    /**
      * Reads blob from object store.
      * @param hash SHA-1 hash of the blob to read
      * @return the Blob object
@@ -49,7 +49,7 @@ public class Blob implements Serializable {
         return readObject(f, Blob.class);
     }
 
-    /** 
+    /**
      * Deletes blob from object store.
      */
     public void deleteBlob() {
@@ -57,7 +57,7 @@ public class Blob implements Serializable {
         f.delete();
     }
 
-    /** 
+    /**
      * Writes blob to ~/.gitlet/stage directory.
      */
     public void writeBlobToStage() {
@@ -65,7 +65,7 @@ public class Blob implements Serializable {
         writeObject(f, this);
     }
 
-    /** 
+    /**
      * Deletes blob from stage.
      */
     public void deleteBlobFromStage() {
@@ -73,7 +73,7 @@ public class Blob implements Serializable {
         f.delete();
     }
     
-    /** 
+    /**
      * Reads blob from stage. If not found in stage, tries object store.
      * @param hash SHA-1 hash of the blob to read
      * @return the Blob object

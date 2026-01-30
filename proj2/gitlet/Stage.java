@@ -35,7 +35,7 @@ public class Stage implements Serializable {
         this.remove = remove;
     }
 
-    /** 
+    /**
      * Clears the staged area by deleting all staged blobs.
      */
     public static void clearStaged() {
@@ -51,7 +51,7 @@ public class Stage implements Serializable {
         }
     }
 
-    /** 
+    /**
      * Writes the stage to disk.
      * @param s the Stage object to write
      */
@@ -59,7 +59,7 @@ public class Stage implements Serializable {
         writeObject(stage, s);
     }
 
-    /** 
+    /**
      * Reads the stage from disk. Creates new stage if none exists.
      * @return the Stage object
      */
